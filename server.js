@@ -738,10 +738,10 @@ app.post('/api/plan/upload', upload.single('plan'), async (req, res) => {
   }
 });
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8080;
 runMigrationsAndSeed()
   .then(() => {
-    app.listen(port, () => console.log(`Server listening on http://localhost:${port}`));
+    app.listen(port, '0.0.0.0', () => console.log(`Server listening on port ${port}`));
   })
   .catch((err) => {
     console.error('Failed to init db', err);
