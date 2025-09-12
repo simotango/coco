@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin - Zalagh Plancher</title>
+    <style>
+      :root { --brand:#1976d2; --brand-dark:#0d47a1; --text:#1f2937; --muted:#6b7280; --bg:#f3f4f6; --card:#ffffff; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: Arial, sans-serif; color: var(--text); background: var(--bg); }
+      header { background: var(--card); border-bottom: 1px solid #e5e7eb; padding: 10px 16px; display:flex; align-items:center; justify-content:space-between; }
+      .brand { display:flex; align-items:center; gap:10px; }
+      .brand img { height:36px; width:36px; object-fit:contain; }
+      .brand h1 { font-size:18px; margin:0; color: var(--brand-dark); }
+      nav { display:flex; gap:8px; }
+      .tab { background:#e3f2fd; color:var(--brand-dark); border:none; padding:8px 12px; border-radius:9999px; cursor:pointer; font-weight:600; }
+      .tab.active { background:var(--brand); color:#fff; }
+      .container { max-width:1100px; margin: 20px auto; padding: 0 16px; }
+      .card { background: var(--card); border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+      .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+      input, select, button { width: 100%; padding: 10px; margin: 8px 0; border-radius:10px; border:1px solid #e5e7eb; }
+      input:focus, select:focus { outline:none; border-color:var(--brand); box-shadow:0 0 0 3px rgba(25,118,210,0.15); }
+      button.primary { background:var(--brand); color:#fff; border:none; cursor:pointer; font-weight:600; }
+      button.primary:hover { background:var(--brand-dark); }
+      table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+      th, td { border: 1px solid #eee; padding: 8px; text-align: left; }
+      tbody tr:hover { background: #f9fbff; }
+      .badge { display:inline-block; padding:4px 8px; border-radius:9999px; font-size:12px; font-weight:600; }
+      .badge.encours { background:#fff7e6; color:#b26a00; border:1px solid #ffe0a3; }
+      .badge.livré { background:#e7f7ef; color:#0b7a42; border:1px solid #bde8cf; }
+      .hidden { display:none; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <img src="/asset/téléchargement.jpg" alt="Zalagh" />
+        <h1>Espace Administrateur</h1>
+      </div>
+      <nav>
+        <button class="tab active" data-target="section-employes">Employés</button>
+        <button class="tab" data-target="section-demandes">Demandes</button>
+        <button class="tab" data-target="section-assistant">Assistant</button>
+        <button id="logout" class="tab" style="background:#ffecec;color:#b00020;">Déconnexion</button>
+      </nav>
+    </header>
+    <div class="container">
+    <section id="section-employes">
+    <div class="grid">
+      <div class="card">
+        <h3>Ajouter un employé</h3>
+        <form id="employeeForm">
+          <label>Nom</label>
+          <input id="nom" required />
+          <label>Prénom</label>
+          <input id="prenom" required />
+          <label>Email (optionnel)</label>
+          <input id="email" type="email" placeholder="employe@example.com" />
+          <label>Mot de passe (optionnel, si email saisi)</label>
+          <input id="password" type="password" placeholder="mot de passe" />
+          <label>Secteur</label>
+          <select id="secteur" required>
+            <option value="">-- Choisir --</option>
+            <option value="finance">Finance</option>
+            <option value="chantier">Chantier</option>
+            <option value="production">Production</option>
+          </select>
+          <button class="primary" type="submit">Créer</button>
+        </form>
+        <div id="createMsg"></div>
+      </div>
+      <div class="card">
+        <h3>Employés</h3>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Nom</th><th>Prénom</th><th>Secteur</th><th>AdminRef</th></tr>
+          </thead>
+          <tbody id="employees"></tbody>
+        </table>
+      </div>
+    </div>
+    </section>
+
+    <section id="section-demandes" class="hidden">
+      <div class="card" style="margin-top:16px;">
+        <h3>Demandes</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Nom</th><th>Prénom</th><th>Téléphone</th><th>Type</th><th>Prix</th><th>Statut</th><th>Plan</th><th>Devis PDF</th><th>PDF signé</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="demandesBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="section-assistant" class="hidden">
+      <div class="card" style="margin-top:16px;">
+        <h3>Assistant Business</h3>
+        <div id="adminChat" style="height:320px; overflow:auto; border:1px solid #e5e7eb; border-radius:10px; padding:10px; display:flex; flex-direction:column; gap:8px;"></div>
+        <div style="display:flex; gap:10px; margin-top:8px;">
+          <input id="adminPrompt" placeholder="Posez une question (ex: Résumé des ventes du mois)..." 
+          style="flex:1; padding:10px; border:1px solid #e5e7eb; border-radius:10px; width:5000px;" />
+             <button id="adminSend" class="primary" type="button " style="width:100px">Envoyer</button>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px; align-items:center;">
+          <select id="bc_sector" style="padding:8px; border:1px solid #e5e7eb; border-radius:8px;width:100px">
+            <option value="">-- Secteur --</option>
+            <option value="finance">Finance</option>
+            <option value="chantier">Chantier</option>
+            <option value="production">Production</option>
+          </select>
+          <input id="bc_title" placeholder="Titre du message" style="flex:1; padding:8px; border:1px solid #e5e7eb; border-radius:8px;" />
+          <input id="bc_body" placeholder="Message (HTML autorisé)" style="flex:2; padding:8px; border:1px solid #e5e7eb; border-radius:8px;" />
+          <button id="bc_send" class="primary" style="width:100px" type="button">Diffuser</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <h3>Exporter les devis par période</h3>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input id="exp_from" type="date" />
+          <span>à</span>
+          <input id="exp_to" type="date" />
+          <button id="exp_go" class="primary" type="button">Exporter</button>
+        </div>
+        <div id="exp_result" style="margin-top:10px; font-size:14px;"></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <h3>Inbox Notifications (Employés)</h3>
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+          <select id="inbox_sector" style="padding:8px; border:1px solid #e5e7eb; border-radius:8px;">
+            <option value="">Tous secteurs</option>
+            <option value="finance">Finance</option>
+            <option value="chantier">Chantier</option>
+            <option value="production">Production</option>
+          </select>
+          <button id="inbox_refresh" class="primary" type="button">Actualiser</button>
+        </div>
+        <div id="inbox" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;"></div>
+      </div>
+    </section>
+    </div>
+    <script>
+      const token = localStorage.getItem('token');
+      if (!token) location.href = '/';
+
+      document.getElementById('logout').onclick = () => { localStorage.removeItem('token'); location.href = '/'; };
+
+      // Tabs handling
+      document.querySelectorAll('.tab[data-target]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab[data-target]').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const target = btn.getAttribute('data-target');
+          document.querySelectorAll('section[id^="section-\"]').forEach(s => s.classList.add('hidden'));
+          const sec = document.getElementById(target);
+          if (sec) sec.classList.remove('hidden');
+        });
+      });
+
+      async function refreshEmployees() {
+        const res = await fetch('/api/employees', { headers: { Authorization: 'Bearer ' + token } });
+        if (!res.ok) { if (res.status === 401) { localStorage.removeItem('token'); location.href = '/'; return; } }
+        const list = await res.json();
+        const tbody = document.getElementById('employees');
+        tbody.innerHTML = '';
+        list.forEach(emp => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${emp.id}</td><td>${emp.nom}</td><td>${emp.prenom}</td><td>${emp.secteur}</td><td>${emp.adminref || ''}</td>`;
+          tbody.appendChild(tr);
+        });
+      }
+
+      document.getElementById('employeeForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const nom = document.getElementById('nom').value;
+        const prenom = document.getElementById('prenom').value;
+        const email = document.getElementById('email').value || null;
+        const password = document.getElementById('password').value || null;
+        const secteur = document.getElementById('secteur').value;
+        const res = await fetch('/api/employees', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ nom, prenom, secteur, email, password })
+        });
+        const msg = document.getElementById('createMsg');
+        if (!res.ok) { msg.textContent = 'Erreur de création'; return; }
+        msg.textContent = 'Employé créé';
+        (document.getElementById('employeeForm')).reset();
+        refreshEmployees();
+      });
+
+      refreshEmployees();
+
+      // reuse the same token defined above
+      async function loadDemandes() {
+        const res = await fetch('/api/admin/demandes', { headers: { Authorization: 'Bearer ' + token } });
+        if (!res.ok) return;
+        const list = await res.json();
+        const tbody = document.getElementById('demandesBody');
+        tbody.innerHTML = '';
+        list.forEach(d => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${d.iddemande}</td>
+            <td>${d.nom}</td>
+            <td>${d.prenom}</td>
+            <td>${d.telephone || ''}</td>
+            <td>${d.type_projet}</td>
+            <td>${d.prix}</td>
+            <td>${d.statut ? `<span class="badge ${d.statut}">${d.statut}</span>` : ''}</td>
+            <td>${d.plan_jpg ? `<a href="/uploads/${d.plan_jpg}" target="_blank">voir</a>` : ''}</td>
+            <td>${d.pdf_path ? `<a href="${d.pdf_path}" target="_blank" download>Télécharger devis</a>` : ''}</td>
+            <td>${d.pdf_signe_path ? `<a href="${d.pdf_signe_path}" target="_blank" download>PDF signé</a>` : `<button class="up" data-id="${d.iddemande}">Uploader PDF signé</button>`}</td>
+            <td>
+              <button class="gen" data-id="${d.iddemande}">Générer PDF</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+        tbody.querySelectorAll('button.gen').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const id = e.target.getAttribute('data-id');
+            const r = await fetch(`/api/demandes/${id}/pdf`, { method: 'POST' });
+            if (r.ok) loadDemandes();
+          });
+        });
+        tbody.querySelectorAll('button.up').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const id = e.target.getAttribute('data-id');
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/pdf';
+            input.onchange = async () => {
+              const file = input.files[0];
+              if (!file) return;
+              // Use FileReader to safely convert to base64 for large files
+              const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const dataUrl = reader.result; // e.g., data:application/pdf;base64,XXXX
+                  const idx = String(dataUrl).indexOf(',');
+                  resolve(idx >= 0 ? String(dataUrl).slice(idx + 1) : '');
+                };
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(file);
+              });
+              const r = await fetch(`/api/admin/demandes/${id}/upload-pdf`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                body: JSON.stringify({ base64 })
+              });
+              if (r.ok) { loadDemandes(); }
+            };
+            input.click();
+          });
+        });
+      }
+
+      loadDemandes();
+
+      // Assistant business
+      const adminChat = document.getElementById('adminChat');
+      function adminPush(role, text, html) {
+        const div = document.createElement('div');
+        div.style.padding = '8px 10px';
+        div.style.borderRadius = '10px';
+        div.style.maxWidth = '80%';
+        if (role === 'user') { div.style.alignSelf = 'flex-end'; div.style.background = '#e3f2fd'; }
+        else { div.style.alignSelf = 'flex-start'; div.style.background = '#f3f4f6'; }
+        if (html) { div.innerHTML = html; }
+        else { div.textContent = text; }
+        adminChat.appendChild(div);
+        adminChat.scrollTop = adminChat.scrollHeight;
+      }
+
+      function sanitizeAndFormatAI(payload) {
+        // Prefer server-provided HTML when present
+        if (payload && payload.html) {
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = String(payload.html);
+          // Fix links: open in new tab, remove hash-only anchors
+          wrapper.querySelectorAll('a').forEach(a => {
+            const href = (a.getAttribute('href') || '').trim();
+            if (!href || href.startsWith('#')) {
+              const span = document.createElement('span');
+              span.textContent = a.textContent || '';
+              a.replaceWith(span);
+            } else {
+              a.setAttribute('target', '_blank');
+              a.setAttribute('rel', 'noopener');
+            }
+          });
+          return wrapper.innerHTML;
+        }
+        // Fallback: convert simple markdown-like text to HTML
+        let t = String(payload?.text || '');
+        // Strip code fences
+        t = t.replace(/```[\s\S]*?```/g, '');
+        // Bold **...**
+        t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1<\/strong>');
+        const lines = t.split(/\r?\n/);
+        let html = '';
+        let inList = false;
+        const flushList = () => { if (inList) { html += '</ul>'; inList = false; } };
+        for (const line of lines) {
+          const m = line.match(/^\s*\*\s+(.*)$/);
+          if (m) {
+            if (!inList) { html += '<ul>'; inList = true; }
+            html += `<li>${m[1]}</li>`;
+          } else if (line.trim() === '') {
+            flushList();
+            html += '<br/>';
+          } else {
+            flushList();
+            html += line;
+          }
+        }
+        flushList();
+        return html;
+      }
+      document.getElementById('adminSend').onclick = async () => {
+        const input = document.getElementById('adminPrompt');
+        const text = input.value.trim();
+        if (!text) return;
+        adminPush('user', text);
+        input.value = '';
+        const messages = Array.from(adminChat.querySelectorAll('div')).map(el => ({
+          role: el.style.alignSelf === 'flex-end' ? 'user' : 'assistant',
+          content: el.textContent
+        }));
+        const r = await fetch('/api/admin/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ messages }) });
+        if (!r.ok) { adminPush('assistant', 'Erreur du chat admin.'); return; }
+        const data = await r.json();
+        const html = sanitizeAndFormatAI(data);
+        adminPush('assistant', data.text || '(aucune réponse)', html);
+        // Agent: detect intent to notify sector with devis links
+        handleAgentActions(text);
+      };
+
+      // Export tool
+      document.getElementById('exp_go').onclick = async () => {
+        const from = (document.getElementById('exp_from').value || '').trim();
+        const to = (document.getElementById('exp_to').value || '').trim();
+        if (!from || !to) { document.getElementById('exp_result').textContent = 'Veuillez choisir une période.'; return; }
+        const r = await fetch(`/api/admin/export?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { headers: { Authorization: 'Bearer ' + token } });
+        if (!r.ok) { document.getElementById('exp_result').textContent = 'Erreur export.'; return; }
+        const data = await r.json();
+        const list = (data.items || []).map(it => `<div><a href="${it.pdf_path}" target="_blank">${it.iddemande}</a></div>`).join('');
+        document.getElementById('exp_result').innerHTML = list || 'Aucun devis trouvé.';
+      };
+
+      // Broadcast tool
+      document.getElementById('bc_send').onclick = async () => {
+        const secteur = document.getElementById('bc_sector').value;
+        const title = document.getElementById('bc_title').value.trim();
+        const body_html = document.getElementById('bc_body').value.trim();
+        if (!secteur || !title || !body_html) { adminPush('assistant', 'Veuillez remplir secteur, titre et message.'); return; }
+        const r = await fetch('/api/admin/notify', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ secteur, title, body_html }) });
+        if (!r.ok) { adminPush('assistant', 'Erreur lors de l\'envoi.'); return; }
+        const data = await r.json();
+        adminPush('assistant', `Message diffusé au secteur ${secteur} (${data.count} destinataires).`);
+      };
+      // Admin inbox UI
+      async function loadInbox() {
+        const sector = document.getElementById('inbox_sector').value;
+        const url = sector ? `/api/admin/notifications?secteur=${encodeURIComponent(sector)}` : '/api/admin/notifications';
+        const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+        if (!r.ok) return;
+        const items = await r.json();
+        const inbox = document.getElementById('inbox');
+        inbox.innerHTML = '';
+        items.forEach(n => {
+          const card = document.createElement('div');
+          card.style.border = '1px solid #e5e7eb';
+          card.style.borderRadius = '10px';
+          card.style.padding = '10px';
+          card.innerHTML = `<div style=\"font-weight:700;\">${n.title}</div>
+            <div style=\"color:#6b7280; font-size:12px;\">${n.nom} ${n.prenom} • ${n.secteur} • ${new Date(n.created_at).toLocaleString()}</div>
+            <div style=\"margin-top:6px;\">${n.body_html}</div>
+            <div class=\"thread\" id=\"thr_${n.id}\" style=\"max-height:140px; overflow:auto; border:1px solid #eee; border-radius:8px; padding:8px; margin:8px 0;\"></div>
+            <div style=\"display:flex; gap:6px;\">
+              <input class=\"msg\" placeholder=\"Réponse...\" style=\"flex:1; padding:8px; border:1px solid #e5e7eb; border-radius:8px;\" />
+              <button class=\"send\" data-id=\"${n.id}\">Envoyer</button>
+            </div>`;
+          inbox.appendChild(card);
+          // load replies
+          (async () => {
+            const rr = await fetch(`/api/admin/notifications/${n.id}/replies`, { headers: { Authorization: 'Bearer ' + token } });
+            const repl = rr.ok ? await rr.json() : [];
+            const thr = card.querySelector(`#thr_${n.id}`);
+            thr.innerHTML = '';
+            repl.forEach(m => {
+              const d = document.createElement('div');
+              d.style.padding = '6px 8px';
+              d.style.borderRadius = '8px';
+              d.style.margin = '4px 0';
+              if (m.sender_type === 'admin') { d.style.background = '#e3f2fd'; d.style.alignSelf = 'flex-end'; }
+              else { d.style.background = '#f3f4f6'; d.style.alignSelf = 'flex-start'; }
+              d.textContent = m.body;
+              thr.appendChild(d);
+            });
+          })();
+          card.querySelector('button.send').onclick = async (e) => {
+            const id = e.target.getAttribute('data-id');
+            const input = card.querySelector('input.msg');
+            const body = input.value.trim();
+            if (!body) return;
+            const sr = await fetch(`/api/admin/notifications/${id}/replies`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ body }) });
+            if (sr.ok) loadInbox();
+          };
+        });
+      }
+      document.getElementById('inbox_refresh').onclick = loadInbox;
+      loadInbox();
+
+      function parseDateToken(raw) {
+        const s = String(raw || '').trim();
+        const iso = s.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+        if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+        const fr = s.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
+        if (fr) return `${fr[3]}-${fr[2]}-${fr[1]}`;
+        return null;
+      }
+      function defaultFromTo() {
+        const end = new Date();
+        const start = new Date(Date.now() - 30*24*60*60*1000);
+        const pad = (n) => String(n).padStart(2, '0');
+        return {
+          from: `${start.getFullYear()}-${pad(start.getMonth()+1)}-${pad(start.getDate())}`,
+          to: `${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(end.getDate())}`
+        };
+      }
+      async function handleAgentActions(userText) {
+        const t = String(userText || '').toLowerCase();
+        const wantsNotify = /(notif|notification|envoi(er)?|envoyer).*(finance|chantier|production)/.test(t) && /(devis|pdf)/.test(t);
+        if (!wantsNotify) return;
+        const sectorMatch = t.match(/(finance|chantier|production)/);
+        const secteur = sectorMatch ? sectorMatch[1] : 'finance';
+        const tokens = t.match(/\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}/g) || [];
+        let from = null, to = null;
+        if (tokens.length >= 2) { from = parseDateToken(tokens[0]); to = parseDateToken(tokens[1]); }
+        if (!from || !to) { const d = defaultFromTo(); from = d.from; to = d.to; }
+        // Get links
+        const exp = await fetch(`/api/admin/export?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { headers: { Authorization: 'Bearer ' + token } });
+        if (!exp.ok) { adminPush('assistant', 'Erreur durant l\'export automatique.'); return; }
+        const data = await exp.json();
+        const items = Array.isArray(data.items) ? data.items : [];
+        const listHtml = items.length ? items.map(it => `<div>• <a href="${it.pdf_path}" target="_blank" rel="noopener">${it.iddemande}</a></div>`).join('') : '<div>Aucun devis trouvé pour cette période.</div>';
+        const body_html = `<div><strong>Liens de téléchargement des devis</strong> <span style=\"color:#6b7280\">(${from} → ${to})</span></div>${listHtml}`;
+        const title = `Liens de devis (${from} → ${to})`;
+        const r = await fetch('/api/admin/notify', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ secteur, title, body_html }) });
+        if (!r.ok) { adminPush('assistant', 'Erreur lors de la notification automatique.'); return; }
+        const resJson = await r.json();
+        adminPush('assistant', `Notification envoyée automatiquement au secteur ${secteur} (${resJson.count} destinataires).`);
+      }
+    </script>
+  </body>
+  </html>
+
+

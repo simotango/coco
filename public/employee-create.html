@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Créer une demande</title>
+    <style>
+      :root { --brand:#1976d2; --brand-dark:#0d47a1; --text:#1f2937; --muted:#6b7280; --bg:#f3f4f6; --card:#ffffff; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: Arial, sans-serif; color: var(--text); background: var(--bg); }
+      header { background: var(--card); border-bottom: 1px solid #e5e7eb; padding: 10px 16px; display:flex; align-items:center; justify-content:space-between; }
+      .brand { display:flex; align-items:center; gap:10px; }
+      .brand img { height:36px; width:36px; object-fit:contain; }
+      .brand h1 { font-size:18px; margin:0; color: var(--brand-dark); }
+      nav a { text-decoration:none; margin-left:10px; padding:8px 12px; border-radius:9999px; background:#e3f2fd; color:var(--brand-dark); font-weight:600; }
+      nav a.active { background:var(--brand); color:#fff; }
+      .container { max-width:640px; margin: 24px auto; padding: 0 16px; }
+      .card { background: var(--card); border: 1px solid #e5e7eb; border-radius: 14px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+      label { display:block; margin: 10px 0 6px; color: var(--muted); }
+      input, select, button { width:100%; padding:12px 14px; border-radius:10px; border:1px solid #e5e7eb; }
+      input:focus, select:focus { outline:none; border-color:var(--brand); box-shadow:0 0 0 3px rgba(25,118,210,0.15); }
+      button.primary { background:var(--brand); color:#fff; border:none; cursor:pointer; font-weight:600; margin-top:8px; }
+      button.primary:hover { background:var(--brand-dark); }
+      .hint { color: var(--muted); font-size:12px; margin-top:6px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <img src="/asset/téléchargement.jpg" alt="Zalagh" />
+        <h1>Créer une demande</h1>
+      </div>
+      <nav>
+        <a href="/employee-profile.html">Profil</a>
+        <a class="active" href="/employee-create.html">Créer une demande</a>
+        <a href="/employee-demandes.html">Mes demandes</a>
+        <a id="logout" href="#" style="background:#ffecec;color:#b00020;">Déconnexion</a>
+      </nav>
+    </header>
+    <div class="container">
+      <div class="card">
+        <form id="demandeForm" enctype="multipart/form-data">
+          <label>Nom</label>
+          <input id="d_nom" required />
+          <label>Prénom</label>
+          <input id="d_prenom" required />
+          <label>Type de projet</label>
+          <input id="d_type" required />
+          <label>Plan JPG (upload)</label>
+          <input id="d_plan" type="file" accept="image/jpeg,image/png" />
+          <label>Prix</label>
+          <input id="d_prix" type="number" step="0.01" required />
+          <label>Statut</label>
+          <select id="d_statut">
+            <option value="encours">encours</option>
+            <option value="livré">livré</option>
+          </select>
+          <button class="primary" type="submit">Créer</button>
+          <div class="hint" id="demandeMsg"></div>
+        </form>
+      </div>
+    </div>
+    <script>
+      const token = localStorage.getItem('employee_token');
+      if (!token) location.href = '/';
+      document.getElementById('logout').onclick = (e) => { e.preventDefault(); localStorage.removeItem('employee_token'); location.href = '/'; };
+      document.getElementById('demandeForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = new FormData();
+        form.append('nom', document.getElementById('d_nom').value);
+        form.append('prenom', document.getElementById('d_prenom').value);
+        form.append('type_projet', document.getElementById('d_type').value);
+        form.append('prix', document.getElementById('d_prix').value);
+        form.append('statut', document.getElementById('d_statut').value);
+        if (document.getElementById('d_plan').files[0]) {
+          form.append('plan_jpg', document.getElementById('d_plan').files[0]);
+        }
+        const r = await fetch('/api/demandes', { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form });
+        const msg = document.getElementById('demandeMsg');
+        if (!r.ok) { msg.textContent = 'Erreur création'; return; }
+        msg.textContent = 'Demande créée';
+        (document.getElementById('demandeForm')).reset();
+      });
+    </script>
+  </body>
+  </html>
+
+

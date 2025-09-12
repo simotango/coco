@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agent IA - Zalagh Plancher</title>
+    <style>
+      :root { --brand:#1976d2; --brand-dark:#0d47a1; --text:#0f172a; --muted:#64748b; --bg:#f1f5f9; --card:#ffffff; }
+      * { box-sizing: border-box; }
+      body { margin:0; font-family: Arial, sans-serif; color:var(--text); background:var(--bg); }
+      header { background: var(--card); border-bottom: 1px solid #e5e7eb; padding: 10px 16px; display:flex; align-items:center; justify-content:space-between; }
+      .brand { display:flex; align-items:center; gap:10px; }
+      .brand img { height:36px; width:36px; object-fit:contain; }
+      .brand h1 { font-size:18px; margin:0; color: var(--brand-dark); }
+      .container { max-width:980px; margin: 20px auto; padding: 0 16px; display:grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+      .card { background:var(--card); border:1px solid #e2e8f0; border-radius:16px; padding:20px; box-shadow:0 10px 30px rgba(2,6,23,0.06); }
+      .chat { height: 58vh; min-height:360px; overflow:auto; display:flex; flex-direction:column; gap:12px; padding: 8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; }
+      .msg { padding:12px 14px; border-radius:14px; max-width: 84%; line-height:1.5; }
+      .me { align-self:flex-end; background:#e0f2fe; border:1px solid #bae6fd; }
+      .ai { align-self:flex-start; background:#f1f5f9; border:1px solid #e2e8f0; }
+      .inputbar { display:flex; gap:10px; margin-top:12px; }
+      .inputbar input { flex:1; padding:14px 14px; border-radius:12px; border:1px solid #e2e8f0; background:#ffffff; }
+      .inputbar input:focus { outline:none; border-color:var(--brand); box-shadow:0 0 0 3px rgba(25,118,210,0.12); }
+      .inputbar button { padding:14px 16px; border-radius:12px; border:none; background:linear-gradient(135deg, var(--brand), var(--brand-dark)); color:#fff; font-weight:700; cursor:pointer; }
+      .stats { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+      .stat { background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:12px; text-align:center; box-shadow:0 8px 20px rgba(2,6,23,0.04); }
+      .uploader { border:2px dashed #cfe3fb; padding:14px; border-radius:12px; text-align:center; color:var(--muted); background:#f8fafc; }
+      /* Quote panel */
+      .panel { background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px; padding:12px; margin-top:10px; overflow:hidden; }
+      .panel.hide { max-height:0; padding-top:0; padding-bottom:0; border-width:0; opacity:0; transform: translateY(-6px); transition: all .25s ease; }
+      .panel.show { max-height:70vh; opacity:1; transform: translateY(0); transition: all .35s ease; overflow:auto; }
+      .panel h4 { margin:0 0 6px; font-size:14px; }
+      .panel label { display:block; margin:6px 0 4px; color:var(--muted); font-size:12px; }
+      .panel input { width:100%; padding:8px; border-radius:8px; border:1px solid #e5e7eb; font-size:14px; }
+      .panel input:focus { outline:none; border-color:var(--brand); box-shadow:0 0 0 3px rgba(25,118,210,0.15); }
+      .row { display:flex; gap:8px; }
+      .row > div { flex:1; }
+      .actions { display:flex; gap:8px; margin-top:10px; }
+      .btn { padding:12px 14px; border-radius:12px; border:none; font-weight:700; cursor:pointer; }
+      .btn.primary { background:linear-gradient(135deg, var(--brand), var(--brand-dark)); color:#fff; }
+      .btn.ghost { background:#eef2f7; color:var(--text); }
+      .toast { margin-top:10px; padding:10px 12px; border-radius:10px; background:#e7f7ef; color:#0b7a42; border:1px solid #bde8cf; display:none; }
+      .checks { display:flex; flex-wrap: wrap; gap:6px; }
+      .check { display:flex; align-items:center; gap:6px; background:#f3f4f6; border:1px solid #e5e7eb; padding:4px 8px; border-radius:9999px; font-size:12px; }
+      @media (max-width: 900px) {
+        .container { grid-template-columns: 1fr; }
+        .chat { height: 45vh; }
+        .panel.show { max-height:75vh; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <img src="/asset/téléchargement.jpg" alt="Zalagh" />
+        <h1>Agent IA</h1>
+      </div>
+      <a href="/" style="text-decoration:none;color:var(--brand-dark);">Accueil</a>
+    </header>
+    <div class="container">
+      <div class="card">
+        <div id="chat" class="chat"></div>
+        <div class="inputbar">
+          <input id="prompt" placeholder="Posez votre question... (ex: Donne les dimensions et calcule le volume)" />
+          <button id="send">Envoyer</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Analyse de plan béton</h3>
+        <div class="uploader">
+          <input id="file" type="file" accept="image/jpeg,image/png,application/pdf" multiple />
+          <button id="analyze" style="margin-top:8px;">Analyser</button>
+        </div>
+        <div style="margin-top:10px;" class="stats">
+          <div class="stat"><div>Volume (m³)</div><div id="vol">-</div></div>
+          <div class="stat"><div>Coût (DH)</div><div id="cost">-</div></div>
+        </div>
+        <div class="actions">
+          <button id="updateFromChat" class="btn ghost" type="button">Mettre à jour m³ & prix depuis la réponse</button>
+        </div>
+        <div id="summary" style="margin-top:10px;color:var(--muted);"></div>
+        <button id="requestQuote" style="margin-top:10px; display:none; padding:10px 12px; border-radius:10px; border:none; background:var(--brand); color:#fff; font-weight:600; cursor:pointer;">Ajouter demande (avec plan)</button>
+        <button id="createWithoutPlan" style="margin-top:8px; display:none; padding:10px 12px; border-radius:10px; border:none; background:#0b7a42; color:#fff; font-weight:600; cursor:pointer;">Ajouter demande (sans plan)</button>
+        <div id="quotePanel" class="panel hide">
+          <h4>Informations du devis</h4>
+          <div class="row">
+            <div>
+              <label>Nom</label>
+              <input id="q_nom" placeholder="Nom du client" />
+            </div>
+            <div>
+              <label>Prénom</label>
+              <input id="q_prenom" placeholder="Prénom du client" />
+            </div>
+          </div>
+          <label>Type de projet</label>
+          <div class="checks" id="q_types">
+            <label class="check"><input type="checkbox" value="Dalle" /> Dalle</label>
+            <label class="check"><input type="checkbox" value="Fondation" /> Fondation</label>
+            <label class="check"><input type="checkbox" value="Plancher" /> Plancher</label>
+            <label class="check"><input type="checkbox" value="Radier" /> Radier</label>
+            <label class="check"><input type="checkbox" value="Dallage industriel" /> Dallage industriel</label>
+            <label class="check"><input type="checkbox" value="Mur/Voile" /> Mur/Voile</label>
+            <label class="check"><input type="checkbox" value="Poutre" /> Poutre</label>
+            <label class="check"><input type="checkbox" value="Escalier" /> Escalier</label>
+            <label class="check"><input type="checkbox" value="Chaussée" /> Chaussée</label>
+          </div>
+          <label>Téléphone</label>
+          <input id="q_tel" type="tel" placeholder="ex: +212 6 12 34 56 78" />
+          <label>Plan (optionnel si vous n'avez pas uploadé)</label>
+          <input id="q_plan" type="file" accept="image/jpeg,image/png" />
+          <div class="row">
+            <div>
+              <label>Volume estimé (m³)</label>
+              <input id="q_volume" disabled />
+            </div>
+            <div>
+              <label>Prix total (DH)</label>
+              <input id="q_prix" disabled />
+            </div>
+          </div>
+          <div class="actions">
+            <button id="q_cancel" class="btn ghost" type="button">Annuler</button>
+            <button id="q_submit" class="btn primary" type="button">Envoyer la demande</button>
+          </div>
+          <div id="q_toast" class="toast">Demande envoyée avec succès.</div>
+        </div>
+      </div>
+    </div>
+    <script>
+      const chat = document.getElementById('chat');
+      function sanitizeHtml(html) {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = String(html || '');
+        wrapper.querySelectorAll('script, style').forEach(n => n.remove());
+        wrapper.querySelectorAll('a').forEach(a => {
+          a.setAttribute('target','_blank');
+          a.setAttribute('rel','noopener');
+        });
+        return wrapper.innerHTML;
+      }
+      function formatTextToHtml(text) {
+        let t = String(text || '');
+        t = t.replace(/```[\s\S]*?```/g, '');
+        t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1<\/strong>');
+        const lines = t.split(/\r?\n/);
+        let html = '';
+        let inList = false;
+        const flushList = () => { if (inList) { html += '</ul>'; inList = false; } };
+        for (const line of lines) {
+          const m = line.match(/^\s*\*\s+(.*)$/);
+          if (m) { if (!inList) { html += '<ul>'; inList = true; } html += `<li>${m[1]}</li>`; }
+          else if (line.trim() === '') { flushList(); html += '<br/>'; }
+          else { flushList(); html += line; }
+        }
+        flushList();
+        return html;
+      }
+      function push(role, text, html) {
+        const div = document.createElement('div');
+        div.className = 'msg ' + (role === 'user' ? 'me' : 'ai');
+        if (html) { div.innerHTML = sanitizeHtml(html); }
+        else { div.innerHTML = sanitizeHtml(formatTextToHtml(text)); }
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+      }
+      function getLastAssistantText() {
+        const msgs = Array.from(document.querySelectorAll('#chat .msg.ai'));
+        if (!msgs.length) return '';
+        return msgs[msgs.length - 1].textContent || '';
+      }
+      function tryParseVolumeFromText(text) {
+        if (!text) return { volume: null };
+        // 1) JSON line {"volume_m3": number}
+        try {
+          const jsonMatch = text.match(/\{\s*"volume_m3"\s*:\s*([0-9]+(?:\.[0-9]+)?)\s*\}/);
+          if (jsonMatch) {
+            const v = Number(jsonMatch[1]);
+            if (!Number.isNaN(v)) return { volume: v };
+          }
+        } catch {}
+        // 2) Patterns like "X m3" or "X m³"
+        try {
+          const m3Match = text.match(/([0-9]+(?:\.[0-9]+)?)\s*m\s*[³^]3?/i);
+          if (m3Match) {
+            const v = Number(m3Match[1]);
+            if (!Number.isNaN(v)) return { volume: v };
+          }
+        } catch {}
+        return { volume: null };
+      }
+      function updateStatsFromVolume(volume) {
+        if (volume == null || Number.isNaN(volume)) return false;
+        const pricePerM3 = 150;
+        const cost = Math.round(volume * pricePerM3 * 100) / 100;
+        document.getElementById('vol').textContent = volume;
+        document.getElementById('cost').textContent = cost;
+        document.getElementById('summary').textContent = 'Prix unitaire: 150 DH/m³';
+        // update lastVision while preserving any existing plan_jpg
+        lastVision = Object.assign({}, lastVision || {}, { volume_m3: volume, price_per_m3: pricePerM3, estimated_cost_dh: cost });
+        // Show appropriate creation buttons
+        const canCreateWithPlan = lastVision && lastVision.estimated_cost_dh != null && lastVision.plan_jpg;
+        document.getElementById('requestQuote').style.display = canCreateWithPlan ? 'block' : 'none';
+        document.getElementById('createWithoutPlan').style.display = lastVision && lastVision.estimated_cost_dh != null ? 'block' : 'none';
+        // If quote panel is open, mirror values
+        const qp = document.getElementById('quotePanel');
+        if (qp && qp.classList.contains('show')) {
+          const qv = document.getElementById('q_volume');
+          const qpz = document.getElementById('q_prix');
+          if (qv) qv.value = volume;
+          if (qpz) qpz.value = cost;
+        }
+        return true;
+      }
+      let lastVision = null;
+      document.getElementById('send').onclick = async () => {
+        const prompt = document.getElementById('prompt').value.trim();
+        if (!prompt) return;
+        push('user', prompt);
+        document.getElementById('prompt').value = '';
+        const messages = Array.from(document.querySelectorAll('#chat .msg')).map(el => ({
+          role: el.classList.contains('me') ? 'user' : 'assistant',
+          content: el.textContent
+        }));
+        // Encourage the model to output a JSON line with volume_m3 if it computed it
+        messages.unshift({ role: 'user', content: 'Si tu calcules un volume, ajoute une ligne JSON unique: {"volume_m3": <nombre>}.' });
+        const r = await fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages, visionContext: lastVision })
+        });
+        if (!r.ok) { push('assistant', 'Erreur du chat.'); return; }
+        const data = await r.json();
+        push('assistant', data.text || '(aucune réponse)');
+        // Try to auto-extract volume from the assistant answer
+        try {
+          const parsed = tryParseVolumeFromText(data.text || '');
+          if (parsed.volume != null) updateStatsFromVolume(parsed.volume);
+        } catch {}
+      };
+      document.getElementById('analyze').onclick = async () => {
+        const files = Array.from(document.getElementById('file').files);
+        if (!files.length) { alert('Choisissez au moins une image ou un PDF'); return; }
+        const form = new FormData();
+        files.forEach(f => form.append('images', f));
+        form.append('prompt', 'Analyse ce plan de béton et estime le volume en m3 si possible.');
+        push('user', 'J\'ai envoyé un plan à analyser.');
+        const r = await fetch('/api/ai/vision', { method: 'POST', body: form });
+        if (!r.ok) { push('assistant', 'Erreur durant l\'analyse.'); return; }
+        const data = await r.json();
+        if (data.text) {
+          // Prefer HTML if model included markup; render safely as text for now
+          push('assistant', data.text);
+        }
+        document.getElementById('vol').textContent = data.volume_m3 != null ? data.volume_m3 : '-';
+        document.getElementById('cost').textContent = data.estimated_cost_dh != null ? data.estimated_cost_dh : '-';
+        document.getElementById('summary').textContent = 'Prix unitaire: 150 DH/m³';
+        lastVision = data;
+        document.getElementById('requestQuote').style.display = data && data.estimated_cost_dh != null && data.plan_jpg ? 'block' : 'none';
+      };
+
+      document.getElementById('requestQuote').onclick = async () => {
+        if (!lastVision || !lastVision.plan_jpg) { alert('Veuillez analyser un plan d\'abord.'); return; }
+        const panel = document.getElementById('quotePanel');
+        panel.classList.remove('hide');
+        panel.classList.add('show');
+        document.getElementById('q_volume').value = lastVision.volume_m3 ?? '';
+        document.getElementById('q_prix').value = lastVision.estimated_cost_dh ?? '';
+      };
+
+      document.getElementById('updateFromChat').onclick = () => {
+        const text = getLastAssistantText();
+        if (!text) { alert('Aucune réponse IA à analyser.'); return; }
+        const parsed = tryParseVolumeFromText(text);
+        if (parsed.volume == null) { alert('Impossible de détecter un volume dans la dernière réponse. Demandez à l\'IA de fournir {"volume_m3": <nombre>}'); return; }
+        updateStatsFromVolume(parsed.volume);
+      };
+
+      document.getElementById('q_cancel').onclick = () => {
+        const panel = document.getElementById('quotePanel');
+        panel.classList.remove('show');
+        panel.classList.add('hide');
+      };
+
+      document.getElementById('q_submit').onclick = async () => {
+        if (!lastVision || !lastVision.plan_jpg) return;
+        const nom = document.getElementById('q_nom').value.trim();
+        const prenom = document.getElementById('q_prenom').value.trim();
+        const typeChecks = Array.from(document.querySelectorAll('#q_types input[type="checkbox"]:checked'));
+        const type_projet = typeChecks.length ? typeChecks.map(c => c.value).join(', ') : 'Projet béton';
+        if (!nom || !prenom) { alert('Nom et prénom requis'); return; }
+        const prix = lastVision.estimated_cost_dh != null ? Number(lastVision.estimated_cost_dh) : 0;
+        const telephone = document.getElementById('q_tel').value.trim() || undefined;
+        let planPath = lastVision.plan_jpg;
+        const f = document.getElementById('q_plan').files[0];
+        if (!planPath && f) {
+          const fd = new FormData();
+          fd.append('plan', f);
+          const ur = await fetch('/api/plan/upload', { method: 'POST', body: fd });
+          if (ur.ok) { const u = await ur.json(); planPath = u.plan_jpg; }
+        }
+        const body = { nom, prenom, telephone, type_projet, prix, plan_jpg: planPath };
+        const r = await fetch('/api/ai/request-quote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!r.ok) { alert('Erreur lors de la création de la demande'); return; }
+        const created = await r.json();
+        const toast = document.getElementById('q_toast');
+        toast.style.display = 'block';
+        push('assistant', `Demande créée avec succès. ID: ${created.iddemande}`);
+        setTimeout(() => { toast.style.display = 'none'; }, 2500);
+        const panel = document.getElementById('quotePanel');
+        panel.classList.remove('show');
+        panel.classList.add('hide');
+        document.getElementById('q_nom').value = '';
+        document.getElementById('q_prenom').value = '';
+        document.querySelectorAll('#q_types input[type="checkbox"]').forEach(c => c.checked = false);
+      };
+
+      document.getElementById('createWithoutPlan').onclick = async () => {
+        if (!lastVision || lastVision.estimated_cost_dh == null) { alert('Calculez d\'abord volume et prix.'); return; }
+        const panel = document.getElementById('quotePanel');
+        panel.classList.remove('hide');
+        panel.classList.add('show');
+        document.getElementById('q_volume').value = lastVision.volume_m3 ?? '';
+        document.getElementById('q_prix').value = lastVision.estimated_cost_dh ?? '';
+        // Override submit to send without plan
+        const submit = document.getElementById('q_submit');
+        const handler = async () => {
+          const nom = document.getElementById('q_nom').value.trim();
+          const prenom = document.getElementById('q_prenom').value.trim();
+          const telephone = document.getElementById('q_tel').value.trim() || undefined;
+          const typeChecks = Array.from(document.querySelectorAll('#q_types input[type="checkbox"]:checked'));
+          const type_projet = typeChecks.length ? typeChecks.map(c => c.value).join(', ') : 'Projet béton';
+          if (!nom || !prenom) { alert('Nom et prénom requis'); return; }
+          const prix = lastVision.estimated_cost_dh != null ? Number(lastVision.estimated_cost_dh) : 0;
+          // Allow attaching a plan even in the "sans plan" flow
+          let planPath = null;
+          const f2 = document.getElementById('q_plan').files[0];
+          if (f2) {
+            const fd2 = new FormData();
+            fd2.append('plan', f2);
+            const ur2 = await fetch('/api/plan/upload', { method: 'POST', body: fd2 });
+            if (ur2.ok) { const u2 = await ur2.json(); planPath = u2.plan_jpg; }
+          }
+          const body = { nom, prenom, telephone, type_projet, prix, ...(planPath ? { plan_jpg: planPath } : {}) };
+          const r = await fetch('/api/ai/request-quote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          if (!r.ok) { alert('Erreur lors de la création de la demande'); return; }
+          const created = await r.json();
+          const toast = document.getElementById('q_toast');
+          toast.style.display = 'block';
+          push('assistant', `Demande créée avec succès. ID: ${created.iddemande}`);
+          setTimeout(() => { toast.style.display = 'none'; }, 2500);
+          panel.classList.remove('show');
+          panel.classList.add('hide');
+          document.getElementById('q_nom').value = '';
+          document.getElementById('q_prenom').value = '';
+          document.querySelectorAll('#q_types input[type="checkbox"]').forEach(c => c.checked = false);
+          submit.removeEventListener('click', handler);
+        };
+        submit.addEventListener('click', handler);
+      };
+    </script>
+  </body>
+  </html>
+
+

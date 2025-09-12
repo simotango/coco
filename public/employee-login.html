@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Connexion Employé - Zalagh Plancher</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 40px; }
+      .card { max-width: 420px; margin: 0 auto; border: 1px solid #ddd; padding: 24px; border-radius: 8px; }
+      input, button { width: 100%; padding: 10px; margin: 8px 0; }
+      .error { color: #b00020; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>Connexion Employé</h2>
+      <form id="loginForm">
+        <label>Email</label>
+        <input id="email" type="email" required placeholder="employe@example.com" />
+        <label>Mot de passe</label>
+        <input id="password" type="password" required placeholder="Votre mot de passe" />
+        <button type="submit">Se connecter</button>
+        <div id="error" class="error"></div>
+      </form>
+    </div>
+    <script>
+      const form = document.getElementById('loginForm');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const res = await fetch('/api/employee/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          document.getElementById('error').textContent = data.error || 'Erreur de connexion';
+          return;
+        }
+        const data = await res.json();
+        localStorage.setItem('employee_token', data.token);
+        location.href = '/employee-profile.html';
+      });
+    </script>
+  </body>
+  </html>
+
+

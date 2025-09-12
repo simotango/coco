@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mes demandes</title>
+    <style>
+      :root { --brand:#1976d2; --brand-dark:#0d47a1; --text:#1f2937; --muted:#6b7280; --bg:#f3f4f6; --card:#ffffff; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: Arial, sans-serif; color: var(--text); background: var(--bg); }
+      header { background: var(--card); border-bottom: 1px solid #e5e7eb; padding: 10px 16px; display:flex; align-items:center; justify-content:space-between; }
+      .brand { display:flex; align-items:center; gap:10px; }
+      .brand img { height:36px; width:36px; object-fit:contain; }
+      .brand h1 { font-size:18px; margin:0; color: var(--brand-dark); }
+      nav a { text-decoration:none; margin-left:10px; padding:8px 12px; border-radius:9999px; background:#e3f2fd; color:var(--brand-dark); font-weight:600; }
+      nav a.active { background:var(--brand); color:#fff; }
+      .container { max-width:1000px; margin: 24px auto; padding: 0 16px; }
+      .card { background: var(--card); border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+      table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+      th, td { border: 1px solid #eee; padding: 8px; text-align: left; }
+      tbody tr:hover { background: #f9fbff; }
+      .badge { display:inline-block; padding:4px 8px; border-radius:9999px; font-size:12px; font-weight:600; }
+      .badge.encours { background:#fff7e6; color:#b26a00; border:1px solid #ffe0a3; }
+      .badge.livré { background:#e7f7ef; color:#0b7a42; border:1px solid #bde8cf; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <img src="/asset/téléchargement.jpg" alt="Zalagh" />
+        <h1>Mes demandes</h1>
+      </div>
+      <nav>
+        <a href="/employee-profile.html">Profil</a>
+        <a href="/employee-create.html">Créer une demande</a>
+        <a class="active" href="/employee-demandes.html">Mes demandes</a>
+        <a id="logout" href="#" style="background:#ffecec;color:#b00020;">Déconnexion</a>
+      </nav>
+    </header>
+    <div class="container">
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Nom</th><th>Prénom</th><th>Type</th><th>Prix</th><th>Statut</th><th>Plan</th><th>Devis PDF</th><th>PDF signé</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <script>
+      const token = localStorage.getItem('employee_token');
+      if (!token) location.href = '/';
+      document.getElementById('logout').onclick = (e) => { e.preventDefault(); localStorage.removeItem('employee_token'); location.href = '/'; };
+      async function loadDemandes() {
+        const res = await fetch('/api/demandes', { headers: { Authorization: 'Bearer ' + token } });
+        if (!res.ok) return;
+        const list = await res.json();
+        const tbody = document.getElementById('tbody');
+        tbody.innerHTML = '';
+        list.forEach(d => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${d.iddemande}</td>
+            <td>${d.nom}</td>
+            <td>${d.prenom}</td>
+            <td>${d.type_projet}</td>
+            <td>${d.prix}</td>
+            <td>${d.statut ? `<span class="badge ${d.statut}">${d.statut}</span>` : ''}</td>
+            <td>${d.plan_jpg ? `<a href="/uploads/${d.plan_jpg}" target="_blank">voir</a>` : ''}</td>
+            <td>${d.pdf_path ? `<a href="${d.pdf_path}" target="_blank">Devis PDF</a>` : ''}</td>
+            <td>${d.pdf_signe_path ? `<a href="${d.pdf_signe_path}" target="_blank">PDF signé</a>` : ''}</td>
+            <td><button data-id="${d.iddemande}" class="gen">Générer PDF</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+        tbody.querySelectorAll('button.gen').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const id = e.target.getAttribute('data-id');
+            const r = await fetch(`/api/demandes/${id}/pdf`, { method: 'POST' });
+            if (r.ok) loadDemandes();
+          });
+        });
+      }
+      loadDemandes();
+    </script>
+  </body>
+  </html>
+
+

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Profil Employé</title>
+    <style>
+      :root { --brand:#1976d2; --brand-dark:#0d47a1; --text:#1f2937; --muted:#6b7280; --bg:#f3f4f6; --card:#ffffff; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: Arial, sans-serif; color: var(--text); background: var(--bg); }
+      header { background: var(--card); border-bottom: 1px solid #e5e7eb; padding: 10px 16px; display:flex; align-items:center; justify-content:space-between; }
+      .brand { display:flex; align-items:center; gap:10px; }
+      .brand img { height:36px; width:36px; object-fit:contain; }
+      .brand h1 { font-size:18px; margin:0; color: var(--brand-dark); }
+      nav a { text-decoration:none; margin-left:10px; padding:8px 12px; border-radius:9999px; background:#e3f2fd; color:var(--brand-dark); font-weight:600; }
+      nav a.active { background:var(--brand); color:#fff; }
+      .container { max-width:720px; margin: 24px auto; padding: 0 16px; }
+      .card { background: var(--card); border: 1px solid #e5e7eb; border-radius: 14px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align:center; }
+      .subtitle { color: var(--muted); margin: 6px 0 0; font-size: 14px; }
+      .kv { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top:16px; }
+      .kv div { background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:12px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <img src="/asset/téléchargement.jpg" alt="Zalagh" />
+        <h1>Profil Employé</h1>
+      </div>
+      <nav>
+        <a class="active" href="/employee-profile.html">Profil</a>
+        <a href="/employee-create.html">Créer une demande</a>
+        <a href="/employee-demandes.html">Mes demandes</a>
+        <a id="notif_tab" href="#" style="background:#e3f2fd; color:var(--brand-dark);">Notifications</a>
+        <a id="logout" href="#" style="background:#ffecec;color:#b00020;">Déconnexion</a>
+      </nav>
+    </header>
+    <div class="container">
+      <div class="card">
+        <img src="/asset/téléchargement.jpg" alt="Zalagh" style="height:72px;width:72px;object-fit:contain;" />
+        <h2 style="margin:10px 0 6px;">Bienvenue</h2>
+        <div id="fullname" class="subtitle"></div>
+        <div class="kv">
+          <div><strong>ID</strong><div id="id"></div></div>
+          <div><strong>Email</strong><div id="email"></div></div>
+          <div><strong>Secteur</strong><div id="secteur"></div></div>
+          <div><strong>Créé le</strong><div id="created"></div></div>
+        </div>
+      </div>
+      <div id="notif_panel" class="card" style="margin-top:16px; display:none;">
+        <h3 style="margin:0 0 8px;">Notifications</h3>
+        <div id="notifs"></div>
+      </div>
+    </div>
+    <script>
+      const token = localStorage.getItem('employee_token');
+      if (!token) location.href = '/';
+      document.getElementById('logout').onclick = (e) => { e.preventDefault(); localStorage.removeItem('employee_token'); location.href = '/'; };
+      document.getElementById('notif_tab').onclick = (e) => { e.preventDefault(); const p = document.getElementById('notif_panel'); p.style.display = 'block'; loadNotifs(); }
+      async function loadMe() {
+        const res = await fetch('/api/employee/me', { headers: { Authorization: 'Bearer ' + token } });
+        if (!res.ok) { localStorage.removeItem('employee_token'); location.href = '/'; return; }
+        const me = await res.json();
+        document.getElementById('fullname').textContent = `${me.nom} ${me.prenom}`;
+        document.getElementById('id').textContent = me.id;
+        document.getElementById('email').textContent = me.email || '';
+        document.getElementById('secteur').textContent = me.secteur || '';
+        document.getElementById('created').textContent = new Date(me.created_at).toLocaleString();
+      }
+      loadMe();
+
+      async function loadNotifs() {
+        const res = await fetch('/api/employee/notifications', { headers: { Authorization: 'Bearer ' + token } });
+        if (!res.ok) return;
+        const list = await res.json();
+        const wrap = document.getElementById('notifs');
+        wrap.innerHTML = '';
+        list.forEach(n => {
+          const div = document.createElement('div');
+          div.style.border = '1px solid #e5e7eb';
+          div.style.borderRadius = '12px';
+          div.style.padding = '12px';
+          div.style.margin = '10px 0';
+          div.style.background = '#ffffff';
+          const adminName = (n.admin_nom || n.admin_prenom) ? ` • De ${n.admin_nom || ''} ${n.admin_prenom || ''}` : '';
+          div.innerHTML = `
+            <div style=\"display:flex; align-items:center; justify-content:space-between;\">
+              <div style=\"font-weight:700; color:#0f172a;\">${n.title}</div>
+              <span style=\"font-size:12px; color:#64748b;\">${new Date(n.created_at).toLocaleString()}${adminName}</span>
+            </div>
+            <div style=\"margin-top:6px;\">${n.body_html}</div>
+            <div style=\"display:flex; gap:8px; margin-top:10px;\">
+              <button class=\"take\" data-id=\"${n.id}\" ${n.taken_at ? 'disabled' : ''} style=\"padding:8px 10px; border-radius:10px; border:1px solid #e2e8f0; background:${n.taken_at ? '#f1f5f9' : '#e0f2fe'};\">${n.taken_at ? 'Déjà pris en charge' : 'Pris en charge'}</button>
+              <button class=\"openChat\" data-id=\"${n.id}\" style=\"padding:8px 10px; border-radius:10px; border:1px solid #e2e8f0; background:#f8fafc;\">Ouvrir le chat</button>
+            </div>
+            <div class=\"chatbox\" id=\"cb_${n.id}\" style=\"display:none; margin-top:10px; border-top:1px solid #e2e8f0; padding-top:10px;\">
+              <div class=\"thread\" style=\"max-height:200px; overflow:auto; border:1px solid #e2e8f0; border-radius:10px; padding:8px; margin-bottom:8px; background:#f8fafc;\"></div>
+              <div style=\"display:flex; gap:8px;\">
+                <input class=\"msg\" placeholder=\"Votre message...\" style=\"flex:1; padding:10px; border:1px solid #e2e8f0; border-radius:10px;\" />
+                <button class=\"send\" style=\"padding:10px 12px; border:none; border-radius:10px; background:#1976d2; color:#fff; font-weight:700;\">Envoyer</button>
+              </div>
+            </div>`;
+          wrap.appendChild(div);
+        });
+        // Bind actions
+        wrap.querySelectorAll('button.take').forEach(btn => {
+          btn.onclick = async (e) => {
+            const id = e.target.getAttribute('data-id');
+            const r = await fetch(`/api/employee/notifications/${id}/take`, { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+            if (r.ok) loadNotifs();
+          };
+        });
+        wrap.querySelectorAll('button.openChat').forEach(btn => {
+          btn.onclick = async (e) => {
+            const id = e.target.getAttribute('data-id');
+            const box = document.getElementById(`cb_${id}`);
+            const thread = box.querySelector('.thread');
+            box.style.display = box.style.display === 'none' ? 'block' : 'none';
+            if (box.style.display === 'block') {
+              // load replies
+              const r = await fetch(`/api/employee/notifications/${id}/replies`, { headers: { Authorization: 'Bearer ' + token } });
+              const repl = r.ok ? await r.json() : [];
+              thread.innerHTML = '';
+              repl.forEach(m => {
+                const d = document.createElement('div');
+                d.style.padding = '6px 8px';
+                d.style.borderRadius = '8px';
+                d.style.margin = '4px 0';
+                if (m.sender_type === 'employee') { d.style.background = '#e3f2fd'; d.style.alignSelf = 'flex-end'; }
+                else { d.style.background = '#f3f4f6'; d.style.alignSelf = 'flex-start'; }
+                d.textContent = m.body;
+                thread.appendChild(d);
+              });
+              const input = box.querySelector('input.msg');
+              const send = box.querySelector('button.send');
+              send.onclick = async () => {
+                const body = input.value.trim();
+                if (!body) return;
+                const s = await fetch(`/api/employee/notifications/${id}/replies`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ body }) });
+                if (s.ok) { input.value=''; btn.onclick(e); }
+              };
+            }
+          };
+        });
+      }
+    </script>
+  </body>
+  </html>
+
+
