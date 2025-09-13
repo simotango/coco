@@ -327,6 +327,15 @@ app.get('/api/admin/demandes', requireAuth, async (req, res) => {
 });
 
 // Messaging APIs
+// Admin profile API
+app.get('/api/auth/me', requireAuth, async (req, res) => {
+  const id = req.user.adminId;
+  const { rows } = await pool.query('SELECT id, nom, prenom, email FROM admin WHERE id = $1', [id]);
+  const admin = rows[0];
+  if (!admin) return res.status(404).json({ error: 'Not found' });
+  res.json(admin);
+});
+
 app.get('/api/admin/list', requireAuth, async (req, res) => {
   const { rows } = await pool.query('SELECT id, nom, prenom, email FROM admin ORDER BY nom');
   res.json(rows);
@@ -374,13 +383,20 @@ app.get('/api/admin/messages/:contactId', requireAuth, async (req, res) => {
     params = [adminId, id];
   }
   
-  const { rows } = await pool.query(query, params);
-  res.json(rows);
+  try {
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error loading admin messages:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 app.post('/api/admin/messages', requireAuth, async (req, res) => {
   const { recipient_id, content } = req.body;
   const adminId = req.user.adminId;
+  
+  console.log('Admin sending message:', { recipient_id, content, adminId });
   
   if (!recipient_id || !content) {
     return res.status(400).json({ error: 'recipient_id and content required' });
@@ -398,14 +414,20 @@ app.post('/api/admin/messages', requireAuth, async (req, res) => {
     recipientId = id;
   }
   
-  const { rows } = await pool.query(
-    `INSERT INTO message (sender_id, sender_type, recipient_id, recipient_type, content)
-     VALUES ($1, 'admin', $2, $3, $4)
-     RETURNING *`,
-    [adminId, recipientId, recipientType, content]
-  );
-  
-  res.status(201).json(rows[0]);
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO message (sender_id, sender_type, recipient_id, recipient_type, content)
+       VALUES ($1, 'admin', $2, $3, $4)
+       RETURNING *`,
+      [adminId, recipientId, recipientType, content]
+    );
+    
+    console.log('Message sent successfully:', rows[0]);
+    res.status(201).json(rows[0]);
+  } catch (error) {
+    console.error('Error sending admin message:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 app.get('/api/messages/:contactId', requireEmployeeAuth, async (req, res) => {
@@ -450,13 +472,20 @@ app.get('/api/messages/:contactId', requireEmployeeAuth, async (req, res) => {
     params = [employeeId, id];
   }
   
-  const { rows } = await pool.query(query, params);
-  res.json(rows);
+  try {
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error loading messages:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 app.post('/api/messages', requireEmployeeAuth, async (req, res) => {
   const { recipient_id, content } = req.body;
   const employeeId = req.employee.employeeId;
+  
+  console.log('Employee sending message:', { recipient_id, content, employeeId });
   
   if (!recipient_id || !content) {
     return res.status(400).json({ error: 'recipient_id and content required' });
@@ -474,14 +503,20 @@ app.post('/api/messages', requireEmployeeAuth, async (req, res) => {
     recipientId = id;
   }
   
-  const { rows } = await pool.query(
-    `INSERT INTO message (sender_id, sender_type, recipient_id, recipient_type, content)
-     VALUES ($1, 'employee', $2, $3, $4)
-     RETURNING *`,
-    [employeeId, recipientId, recipientType, content]
-  );
-  
-  res.status(201).json(rows[0]);
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO message (sender_id, sender_type, recipient_id, recipient_type, content)
+       VALUES ($1, 'employee', $2, $3, $4)
+       RETURNING *`,
+      [employeeId, recipientId, recipientType, content]
+    );
+    
+    console.log('Employee message sent successfully:', rows[0]);
+    res.status(201).json(rows[0]);
+  } catch (error) {
+    console.error('Error sending employee message:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Employee creates demande
