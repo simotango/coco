@@ -139,13 +139,18 @@ app.post('/api/admin/notifications/:id/replies', requireAuth, async (req, res) =
 function requireEmployeeAuth(req, res, next) {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  console.log('Employee auth - token:', token ? 'present' : 'missing');
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret');
+    const jwtSecret = process.env.JWT_SECRET || 'dev-secret';
+    console.log('JWT Secret:', jwtSecret ? 'set' : 'missing');
+    const payload = jwt.verify(token, jwtSecret);
+    console.log('Token payload:', payload);
     if (!payload.employeeId) return res.status(403).json({ error: 'Forbidden' });
     req.employee = payload;
     next();
   } catch (e) {
+    console.error('JWT verification error:', e.message);
     return res.status(401).json({ error: 'Invalid token' });
   }
 }
@@ -225,8 +230,10 @@ app.post('/api/employee/login', async (req, res) => {
 
 app.get('/api/employee/me', requireEmployeeAuth, async (req, res) => {
   const id = req.employee.employeeId;
+  console.log('Getting employee data for ID:', id);
   const { rows } = await pool.query('SELECT id, nom, prenom, email, secteur, adminref, created_at FROM employee WHERE id = $1', [id]);
   const emp = rows[0];
+  console.log('Employee found:', emp ? 'yes' : 'no');
   if (!emp) return res.status(404).json({ error: 'Not found' });
   res.json(emp);
 });

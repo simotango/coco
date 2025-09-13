@@ -58,14 +58,26 @@
       document.getElementById('logout').onclick = (e) => { e.preventDefault(); localStorage.removeItem('employee_token'); location.href = '/'; };
       document.getElementById('notif_tab').onclick = (e) => { e.preventDefault(); const p = document.getElementById('notif_panel'); p.style.display = 'block'; loadNotifs(); }
       async function loadMe() {
-        const res = await fetch('/api/employee/me', { headers: { Authorization: 'Bearer ' + token } });
-        if (!res.ok) { localStorage.removeItem('employee_token'); location.href = '/'; return; }
-        const me = await res.json();
-        document.getElementById('fullname').textContent = `${me.nom} ${me.prenom}`;
-        document.getElementById('id').textContent = me.id;
-        document.getElementById('email').textContent = me.email || '';
-        document.getElementById('secteur').textContent = me.secteur || '';
-        document.getElementById('created').textContent = new Date(me.created_at).toLocaleString();
+        try {
+          const res = await fetch('/api/employee/me', { headers: { Authorization: 'Bearer ' + token } });
+          if (!res.ok) { 
+            console.error('API Error:', res.status, await res.text());
+            localStorage.removeItem('employee_token'); 
+            location.href = '/'; 
+            return; 
+          }
+          const me = await res.json();
+          console.log('Employee data loaded:', me);
+          document.getElementById('fullname').textContent = `${me.nom} ${me.prenom}`;
+          document.getElementById('id').textContent = me.id;
+          document.getElementById('email').textContent = me.email || '';
+          document.getElementById('secteur').textContent = me.secteur || '';
+          document.getElementById('created').textContent = new Date(me.created_at).toLocaleString();
+        } catch (error) {
+          console.error('Load error:', error);
+          localStorage.removeItem('employee_token');
+          location.href = '/';
+        }
       }
       loadMe();
 

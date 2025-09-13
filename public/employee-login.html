@@ -45,8 +45,24 @@
           return;
         }
         const data = await res.json();
+        console.log('Login successful:', data);
         localStorage.setItem('employee_token', data.token);
-        location.href = '/employee-profile.html';
+        
+        // Test the token before redirecting
+        try {
+          const testRes = await fetch('/api/employee/me', { 
+            headers: { Authorization: 'Bearer ' + data.token } 
+          });
+          if (testRes.ok) {
+            location.href = '/employee-profile.html';
+          } else {
+            console.error('Token validation failed:', await testRes.text());
+            document.getElementById('error').textContent = 'Erreur de validation du token';
+          }
+        } catch (error) {
+          console.error('Token test error:', error);
+          document.getElementById('error').textContent = 'Erreur de connexion au serveur';
+        }
       });
     </script>
     <!-- Système de Guide Interactif -->
