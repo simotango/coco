@@ -101,10 +101,11 @@ INSERT INTO admin (nom, prenom, email, mdp_hash) VALUES
 ON CONFLICT (email) DO NOTHING;
 
 -- Insert sample employee data
-INSERT INTO employee (nom, prenom, secteur, email, mdp_hash) VALUES 
-('Ahmed', 'Finance', 'finance', 'ahmed@zalagh.com', '$2a$10$rQZ8K9L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0E1F2G3H4I5J6K'),
-('Fatima', 'Chantier', 'chantier', 'fatima@zalagh.com', '$2a$10$rQZ8K9L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0E1F2G3H4I5J6K'),
-('Omar', 'Production', 'production', 'omar@zalagh.com', '$2a$10$rQZ8K9L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0E1F2G3H4I5J6K')
+INSERT INTO employee (id, nom, prenom, secteur, email, mdp_hash) VALUES 
+(0, 'Soumia', 'Test', 'finance', 'Soumia@gmail.com', '$2a$10$rQZ8K9L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0E1F2G3H4I5J6K'),
+(1, 'Ahmed', 'Finance', 'finance', 'ahmed@zalagh.com', '$2a$10$rQZ8K9L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0E1F2G3H4I5J6K'),
+(2, 'Fatima', 'Chantier', 'chantier', 'fatima@zalagh.com', '$2a$10$rQZ8K9L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0E1F2G3H4I5J6K'),
+(3, 'Omar', 'Production', 'production', 'omar@zalagh.com', '$2a$10$rQZ8K9L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0E1F2G3H4I5J6K')
 ON CONFLICT (email) DO NOTHING;
 
 -- Note: Mot de passe par défaut pour tous les employés: "employee123"

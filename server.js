@@ -231,11 +231,30 @@ app.post('/api/employee/login', async (req, res) => {
 app.get('/api/employee/me', requireEmployeeAuth, async (req, res) => {
   const id = req.employee.employeeId;
   console.log('Getting employee data for ID:', id);
-  const { rows } = await pool.query('SELECT id, nom, prenom, email, secteur, adminref, created_at FROM employee WHERE id = $1', [id]);
-  const emp = rows[0];
-  console.log('Employee found:', emp ? 'yes' : 'no');
-  if (!emp) return res.status(404).json({ error: 'Not found' });
-  res.json(emp);
+  try {
+    const { rows } = await pool.query('SELECT id, nom, prenom, email, secteur, adminref, created_at FROM employee WHERE id = $1', [id]);
+    const emp = rows[0];
+    console.log('Employee found:', emp ? 'yes' : 'no');
+    console.log('Query result:', rows);
+    
+    if (!emp) {
+      // Si l'employé n'existe pas, essayer de le créer avec les données du token
+      console.log('Employee not found, creating from token data...');
+      const { email, secteur } = req.employee;
+      const { rows: newRows } = await pool.query(
+        'INSERT INTO employee (id, nom, prenom, secteur, email, mdp_hash) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, nom, prenom, email, secteur, adminref, created_at',
+        [id, 'Utilisateur', 'Test', secteur, email, '$2a$10$rQZ8K9L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0E1F2G3H4I5J6K']
+      );
+      const newEmp = newRows[0];
+      console.log('Created new employee:', newEmp);
+      return res.json(newEmp);
+    }
+    
+    res.json(emp);
+  } catch (error) {
+    console.error('Database error:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Notifications endpoints
