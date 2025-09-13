@@ -288,10 +288,54 @@ class InteractiveGuide {
                     position: 'bottom'
                 },
                 {
+                    target: 'nav',
+                    title: 'Navigation Employé',
+                    description: 'Accédez à la messagerie, créez des demandes, consultez vos notifications.',
+                    position: 'bottom'
+                },
+                {
                     target: 'form',
                     title: 'Informations Personnelles',
                     description: 'Mettez à jour vos informations personnelles et changez votre mot de passe.',
                     position: 'right'
+                }
+            ],
+            'employee-messenger.html': [
+                {
+                    target: '.sidebar-header',
+                    title: 'Messagerie Zalagh Plancher',
+                    description: 'Bienvenue dans votre espace de messagerie. Communiquez avec les administrateurs et vos collègues.',
+                    position: 'bottom'
+                },
+                {
+                    target: '.search-box',
+                    title: 'Recherche de Contacts',
+                    description: 'Tapez ici pour rechercher rapidement un contact par nom ou secteur.',
+                    position: 'bottom'
+                },
+                {
+                    target: '.contacts-list',
+                    title: 'Liste des Contacts',
+                    description: 'Vos contacts : administrateurs et autres employés. Cliquez pour ouvrir une conversation.',
+                    position: 'right'
+                },
+                {
+                    target: '.chat-area',
+                    title: 'Zone de Conversation',
+                    description: 'Sélectionnez un contact pour commencer à discuter. Vos messages apparaîtront ici.',
+                    position: 'left'
+                },
+                {
+                    target: '.message-input',
+                    title: 'Saisie de Message',
+                    description: 'Tapez votre message ici et cliquez sur la flèche pour l\'envoyer.',
+                    position: 'top'
+                },
+                {
+                    target: '.zalaghia-btn',
+                    title: 'Assistant Zalaghia',
+                    description: 'Cliquez sur ce bouton pour accéder à l\'assistant IA Zalaghia. Il peut vous aider avec vos questions.',
+                    position: 'left'
                 }
             ],
             'chatbot.html': [

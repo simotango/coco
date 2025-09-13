@@ -94,6 +94,18 @@ CREATE TABLE IF NOT EXISTS notification_reply (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Messages table for direct messaging
+CREATE TABLE IF NOT EXISTS message (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_id INTEGER NOT NULL,
+  sender_type VARCHAR(20) NOT NULL CHECK (sender_type IN ('employee','admin')),
+  recipient_id INTEGER NOT NULL,
+  recipient_type VARCHAR(20) NOT NULL CHECK (recipient_type IN ('employee','admin')),
+  content TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  read_at TIMESTAMP WITH TIME ZONE
+);
+
 -- Insert sample admin data
 INSERT INTO admin (nom, prenom, email, mdp_hash) VALUES 
 ('Khalid', 'Admin', 'khalid@gmail.com', '$2a$10$rQZ8K9L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0E1F2G3H4I5J6K'),

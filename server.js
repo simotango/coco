@@ -326,6 +326,88 @@ app.get('/api/admin/demandes', requireAuth, async (req, res) => {
   res.json(rows);
 });
 
+// Messaging APIs
+app.get('/api/admin/list', requireAuth, async (req, res) => {
+  const { rows } = await pool.query('SELECT id, nom, prenom, email FROM admin ORDER BY nom');
+  res.json(rows);
+});
+
+app.get('/api/messages/:contactId', requireEmployeeAuth, async (req, res) => {
+  const contactId = req.params.contactId;
+  const employeeId = req.employee.employeeId;
+  
+  // Parse contact ID to get actual user ID and type
+  const [type, id] = contactId.split('_');
+  
+  let query, params;
+  if (type === 'admin') {
+    // Messages between employee and admin
+    query = `
+      SELECT m.*, 
+             CASE 
+               WHEN m.sender_type = 'employee' THEN e.nom || ' ' || e.prenom
+               ELSE a.nom || ' ' || a.prenom
+             END as sender_name
+      FROM message m
+      LEFT JOIN employee e ON m.sender_type = 'employee' AND m.sender_id = e.id
+      LEFT JOIN admin a ON m.sender_type = 'admin' AND m.sender_id = a.id
+      WHERE (m.sender_id = $1 AND m.recipient_id = $2 AND m.sender_type = 'employee' AND m.recipient_type = 'admin')
+         OR (m.sender_id = $2 AND m.recipient_id = $1 AND m.sender_type = 'admin' AND m.recipient_type = 'employee')
+      ORDER BY m.created_at ASC
+    `;
+    params = [employeeId, id];
+  } else {
+    // Messages between employees
+    query = `
+      SELECT m.*, 
+             CASE 
+               WHEN m.sender_type = 'employee' THEN e.nom || ' ' || e.prenom
+               ELSE a.nom || ' ' || a.prenom
+             END as sender_name
+      FROM message m
+      LEFT JOIN employee e ON m.sender_type = 'employee' AND m.sender_id = e.id
+      LEFT JOIN admin a ON m.sender_type = 'admin' AND m.sender_id = a.id
+      WHERE (m.sender_id = $1 AND m.recipient_id = $2 AND m.sender_type = 'employee' AND m.recipient_type = 'employee')
+         OR (m.sender_id = $2 AND m.recipient_id = $1 AND m.sender_type = 'employee' AND m.recipient_type = 'employee')
+      ORDER BY m.created_at ASC
+    `;
+    params = [employeeId, id];
+  }
+  
+  const { rows } = await pool.query(query, params);
+  res.json(rows);
+});
+
+app.post('/api/messages', requireEmployeeAuth, async (req, res) => {
+  const { recipient_id, content } = req.body;
+  const employeeId = req.employee.employeeId;
+  
+  if (!recipient_id || !content) {
+    return res.status(400).json({ error: 'recipient_id and content required' });
+  }
+  
+  // Parse recipient ID
+  const [type, id] = recipient_id.split('_');
+  
+  let recipientType, recipientId;
+  if (type === 'admin') {
+    recipientType = 'admin';
+    recipientId = id;
+  } else {
+    recipientType = 'employee';
+    recipientId = id;
+  }
+  
+  const { rows } = await pool.query(
+    `INSERT INTO message (sender_id, sender_type, recipient_id, recipient_type, content)
+     VALUES ($1, 'employee', $2, $3, $4)
+     RETURNING *`,
+    [employeeId, recipientId, recipientType, content]
+  );
+  
+  res.status(201).json(rows[0]);
+});
+
 // Employee creates demande
 app.post('/api/demandes', requireEmployeeAuth, upload.single('plan_jpg'), async (req, res) => {
   const { nom, prenom, type_projet, prix, statut, telephone } = req.body;
