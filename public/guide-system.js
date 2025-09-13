@@ -293,6 +293,38 @@ class InteractiveGuide {
                     description: 'Mettez à jour vos informations personnelles et changez votre mot de passe.',
                     position: 'right'
                 }
+            ],
+            'chatbot.html': [
+                {
+                    target: '.brand',
+                    title: 'Assistant IA Zalagh Plancher',
+                    description: 'Bienvenue dans l\'assistant IA. Posez vos questions sur nos services, demandez des devis ou obtenez de l\'aide.',
+                    position: 'bottom'
+                },
+                {
+                    target: '.chat',
+                    title: 'Zone de Conversation',
+                    description: 'Ici vous pouvez discuter avec notre assistant IA. Posez vos questions et recevez des réponses instantanées.',
+                    position: 'right'
+                },
+                {
+                    target: '.inputbar',
+                    title: 'Saisie de Message',
+                    description: 'Tapez votre question ici et cliquez sur "Envoyer" ou appuyez sur Entrée pour envoyer votre message.',
+                    position: 'top'
+                },
+                {
+                    target: '.stats',
+                    title: 'Statistiques',
+                    description: 'Consultez les statistiques de votre conversation et les informations sur nos services.',
+                    position: 'left'
+                },
+                {
+                    target: '.uploader',
+                    title: 'Upload de Fichiers',
+                    description: 'Vous pouvez télécharger des plans ou des images pour obtenir des devis personnalisés.',
+                    position: 'top'
+                }
             ]
         }[currentPage] || [];
     }
@@ -478,6 +510,15 @@ class InteractiveGuide {
     loadGuideState() {
         const active = localStorage.getItem('guideActive') === 'true';
         const step = parseInt(localStorage.getItem('guideStep') || '0');
+        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+        
+        // Auto-start guide for chatbot page
+        if (currentPage === 'chatbot.html' && !localStorage.getItem('chatbotGuideShown')) {
+            setTimeout(() => {
+                this.startGuide();
+                localStorage.setItem('chatbotGuideShown', 'true');
+            }, 1000);
+        }
         
         if (active) {
             this.isActive = true;

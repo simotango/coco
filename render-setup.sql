@@ -107,6 +107,8 @@ INSERT INTO employee (nom, prenom, secteur, email, mdp_hash) VALUES
 ('Omar', 'Production', 'production', 'omar@zalagh.com', '$2a$10$rQZ8K9L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0E1F2G3H4I5J6K')
 ON CONFLICT (email) DO NOTHING;
 
+-- Note: Mot de passe par défaut pour tous les employés: "employee123"
+
 -- Create additional indexes for performance
 CREATE INDEX IF NOT EXISTS idx_demande_created_at ON demande(created_at);
 CREATE INDEX IF NOT EXISTS idx_notification_employee_id ON notification(employee_id);
