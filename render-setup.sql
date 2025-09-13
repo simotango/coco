@@ -71,30 +71,7 @@ CREATE TABLE IF NOT EXISTS demande (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Notifications to employees
-CREATE TABLE IF NOT EXISTS notification (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  employee_id INTEGER REFERENCES employee(id) ON DELETE CASCADE,
-  title VARCHAR(200) NOT NULL,
-  body_html TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  read_at TIMESTAMP WITH TIME ZONE,
-  taken_at TIMESTAMP WITH TIME ZONE,
-  created_by_admin UUID REFERENCES admin(id)
-);
-
--- Notification replies
-CREATE TABLE IF NOT EXISTS notification_reply (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  notification_id UUID REFERENCES notification(id) ON DELETE CASCADE,
-  sender_type VARCHAR(20) NOT NULL CHECK (sender_type IN ('employee','admin')),
-  sender_employee_id INTEGER,
-  sender_admin_id UUID,
-  body TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Messages table for direct messaging
+-- Messages table for all communications (replaces notifications)
 CREATE TABLE IF NOT EXISTS message (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   sender_id INTEGER NOT NULL,
@@ -102,6 +79,7 @@ CREATE TABLE IF NOT EXISTS message (
   recipient_id INTEGER NOT NULL,
   recipient_type VARCHAR(20) NOT NULL CHECK (recipient_type IN ('employee','admin')),
   content TEXT NOT NULL,
+  message_type VARCHAR(20) DEFAULT 'chat' CHECK (message_type IN ('chat','notification','system')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   read_at TIMESTAMP WITH TIME ZONE
 );

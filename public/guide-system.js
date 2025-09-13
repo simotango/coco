@@ -218,7 +218,7 @@ class InteractiveGuide {
                 {
                     target: 'nav',
                     title: 'Navigation Admin',
-                    description: 'Utilisez ces onglets pour naviguer entre les différentes sections : Employés, Demandes, Assistant.',
+                    description: 'Utilisez ces onglets pour naviguer entre les différentes sections : Employés, Demandes, Assistant, Messagerie.',
                     position: 'bottom'
                 },
                 {
@@ -237,6 +237,38 @@ class InteractiveGuide {
                     target: '#section-assistant',
                     title: 'Assistant IA',
                     description: 'Utilisez l\'assistant IA pour obtenir de l\'aide et des réponses automatiques.',
+                    position: 'top'
+                }
+            ],
+            'admin-messenger.html': [
+                {
+                    target: '.sidebar-header',
+                    title: 'Messagerie Administrateur',
+                    description: 'Bienvenue dans votre espace de messagerie. Communiquez avec tous les employés et autres administrateurs.',
+                    position: 'bottom'
+                },
+                {
+                    target: '.search-box',
+                    title: 'Recherche de Contacts',
+                    description: 'Tapez ici pour rechercher rapidement un contact par nom ou secteur.',
+                    position: 'bottom'
+                },
+                {
+                    target: '.contacts-list',
+                    title: 'Liste des Contacts',
+                    description: 'Tous vos contacts : autres administrateurs et employés. Cliquez pour ouvrir une conversation.',
+                    position: 'right'
+                },
+                {
+                    target: '.chat-area',
+                    title: 'Zone de Conversation',
+                    description: 'Sélectionnez un contact pour commencer à discuter. Vos messages apparaîtront ici.',
+                    position: 'left'
+                },
+                {
+                    target: '.message-input',
+                    title: 'Saisie de Message',
+                    description: 'Tapez votre message ici et cliquez sur la flèche pour l\'envoyer.',
                     position: 'top'
                 }
             ],

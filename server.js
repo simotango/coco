@@ -332,6 +332,82 @@ app.get('/api/admin/list', requireAuth, async (req, res) => {
   res.json(rows);
 });
 
+app.get('/api/admin/messages/:contactId', requireAuth, async (req, res) => {
+  const contactId = req.params.contactId;
+  const adminId = req.user.adminId;
+  
+  // Parse contact ID to get actual user ID and type
+  const [type, id] = contactId.split('_');
+  
+  let query, params;
+  if (type === 'admin') {
+    // Messages between admin and admin
+    query = `
+      SELECT m.*, 
+             CASE 
+               WHEN m.sender_type = 'admin' THEN a1.nom || ' ' || a1.prenom
+               ELSE a2.nom || ' ' || a2.prenom
+             END as sender_name
+      FROM message m
+      LEFT JOIN admin a1 ON m.sender_type = 'admin' AND m.sender_id = a1.id
+      LEFT JOIN admin a2 ON m.sender_type = 'admin' AND m.sender_id = a2.id
+      WHERE (m.sender_id = $1 AND m.recipient_id = $2 AND m.sender_type = 'admin' AND m.recipient_type = 'admin')
+         OR (m.sender_id = $2 AND m.recipient_id = $1 AND m.sender_type = 'admin' AND m.recipient_type = 'admin')
+      ORDER BY m.created_at ASC
+    `;
+    params = [adminId, id];
+  } else {
+    // Messages between admin and employee
+    query = `
+      SELECT m.*, 
+             CASE 
+               WHEN m.sender_type = 'admin' THEN a.nom || ' ' || a.prenom
+               ELSE e.nom || ' ' || e.prenom
+             END as sender_name
+      FROM message m
+      LEFT JOIN admin a ON m.sender_type = 'admin' AND m.sender_id = a.id
+      LEFT JOIN employee e ON m.sender_type = 'employee' AND m.sender_id = e.id
+      WHERE (m.sender_id = $1 AND m.recipient_id = $2 AND m.sender_type = 'admin' AND m.recipient_type = 'employee')
+         OR (m.sender_id = $2 AND m.recipient_id = $1 AND m.sender_type = 'employee' AND m.recipient_type = 'admin')
+      ORDER BY m.created_at ASC
+    `;
+    params = [adminId, id];
+  }
+  
+  const { rows } = await pool.query(query, params);
+  res.json(rows);
+});
+
+app.post('/api/admin/messages', requireAuth, async (req, res) => {
+  const { recipient_id, content } = req.body;
+  const adminId = req.user.adminId;
+  
+  if (!recipient_id || !content) {
+    return res.status(400).json({ error: 'recipient_id and content required' });
+  }
+  
+  // Parse recipient ID
+  const [type, id] = recipient_id.split('_');
+  
+  let recipientType, recipientId;
+  if (type === 'admin') {
+    recipientType = 'admin';
+    recipientId = id;
+  } else {
+    recipientType = 'employee';
+    recipientId = id;
+  }
+  
+  const { rows } = await pool.query(
+    `INSERT INTO message (sender_id, sender_type, recipient_id, recipient_type, content)
+     VALUES ($1, 'admin', $2, $3, $4)
+     RETURNING *`,
+    [adminId, recipientId, recipientType, content]
+  );
+  
+  res.status(201).json(rows[0]);
+});
+
 app.get('/api/messages/:contactId', requireEmployeeAuth, async (req, res) => {
   const contactId = req.params.contactId;
   const employeeId = req.employee.employeeId;
