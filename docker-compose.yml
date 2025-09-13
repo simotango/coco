@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:13-alpine
+    environment:
+      POSTGRES_DB: zalagh_plancher
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your-postgres-password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./azure-compatible-setup.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # Zalagh Plancher Application
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    volumes:
+      - ./uploads:/app/uploads
+      - ./pdfs:/app/pdfs
+      - ./pdfsigne:/app/pdfsigne
+      - ./planjpg:/app/planjpg
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
