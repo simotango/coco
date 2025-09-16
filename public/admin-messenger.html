@@ -524,18 +524,26 @@
         
         // Setup Socket.IO
         function setupSocketIO() {
-            const socket = io();
+            const socket = io({
+                auth: {
+                    token: localStorage.getItem('token'),
+                    role: 'admin'
+                }
+            });
             
             socket.on('connect', () => {
                 console.log('Connected to server');
             });
             
-            socket.on('new-message', (data) => {
-                if (currentContact && data.notification_id === currentContact.id) {
-                    // Add message to current conversation
-                    if (!messages[currentContact.id]) messages[currentContact.id] = [];
-                    messages[currentContact.id].push(data);
-                    renderMessages(currentContact.id);
+            socket.on('new-message', (msg) => {
+                // Determine the contact id the message belongs to
+                const contactId = msg.sender_type === 'admin'
+                    ? `admin_${msg.sender_id}`
+                    : `emp_${msg.sender_id}`;
+                if (!messages[contactId]) messages[contactId] = [];
+                messages[contactId].push(msg);
+                if (currentContact && currentContact.id === contactId) {
+                    renderMessages(contactId);
                 }
             });
             
@@ -731,18 +739,15 @@
             
             try {
                 // Use Socket.IO for real-time messaging
-                const socket = io();
-                socket.emit('send-message', {
-                    room: currentContact.id,
-                    message: content,
-                    senderType: 'admin',
-                    senderId: currentUser.id
+                const socket = io({
+                    auth: { token: localStorage.getItem('token'), role: 'admin' }
                 });
+                socket.emit('send-message', { to: currentContact.id, content });
                 
                 // Add message to local state immediately
                 if (!messages[currentContact.id]) messages[currentContact.id] = [];
                 messages[currentContact.id].push({
-                    content: content,
+                    content,
                     sender_type: 'admin',
                     sender_id: currentUser.id,
                     created_at: new Date().toISOString()

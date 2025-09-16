@@ -20,9 +20,26 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
+  cors: { origin: '*', methods: ['GET','POST'] }
+});
+
+// Auth middleware for Socket.IO using JWT token sent in query.token and role
+io.use((socket, next) => {
+  try {
+    const { token, role } = socket.handshake.auth || {};
+    if (!token || !role) return next(new Error('unauthorized'));
+    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret');
+    if (role === 'admin' && payload.adminId) {
+      socket.data.userKey = `admin_${payload.adminId}`;
+      return next();
+    }
+    if (role === 'employee' && payload.employeeId) {
+      socket.data.userKey = `emp_${payload.employeeId}`;
+      return next();
+    }
+    return next(new Error('forbidden'));
+  } catch (e) {
+    return next(new Error('invalid_token'));
   }
 });
 
@@ -91,6 +108,20 @@ async function runMigrationsAndSeed() {
     await client.query(`ALTER TABLE IF EXISTS notification ADD COLUMN IF NOT EXISTS taken_at TIMESTAMP WITH TIME ZONE`);
     await client.query(`ALTER TABLE IF EXISTS notification ADD COLUMN IF NOT EXISTS created_by_admin UUID REFERENCES admin(id)`);
     await client.query(`CREATE TABLE IF NOT EXISTS notification_reply (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), notification_id UUID REFERENCES notification(id) ON DELETE CASCADE, sender_type VARCHAR(20) NOT NULL CHECK (sender_type IN ('employee','admin')), sender_employee_id INTEGER, sender_admin_id UUID, body TEXT NOT NULL, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW())`);
+
+    // Messaging table supporting admin(UUID) and employee(INT) via text ids
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS message (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        sender_type VARCHAR(20) NOT NULL CHECK (sender_type IN ('employee','admin')),
+        sender_id TEXT NOT NULL,
+        recipient_type VARCHAR(20) NOT NULL CHECK (recipient_type IN ('employee','admin')),
+        recipient_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_message_participants ON message (sender_type, sender_id, recipient_type, recipient_id)`);
   } finally {
     client.release();
   }
@@ -125,11 +156,12 @@ app.get('/api/admin/me', requireAuth, async (req, res) => {
 // Admin inbox: list notifications (optionally by secteur) and replies; reply as admin
 app.get('/api/admin/notifications', requireAuth, async (req, res) => {
   const { secteur } = req.query;
-  let q = `SELECT n.id, n.employee_id, e.nom, e.prenom, e.secteur, n.title, n.body_html, n.created_at, n.read_at, n.taken_at
+  // DISTINCT ON pour éviter doublons éventuels côté vue
+  let q = `SELECT DISTINCT ON (n.id) n.id, n.employee_id, e.nom, e.prenom, e.secteur, n.title, n.body_html, n.created_at, n.read_at, n.taken_at
            FROM notification n JOIN employee e ON e.id = n.employee_id`;
   const params = [];
   if (secteur) { q += ' WHERE e.secteur = $1'; params.push(secteur); }
-  q += ' ORDER BY n.created_at DESC LIMIT 200';
+  q += ' ORDER BY n.id, n.created_at DESC LIMIT 200';
   const { rows } = await pool.query(q, params);
   res.json(rows);
 });
@@ -1062,38 +1094,29 @@ app.post('/api/plan/upload', upload.single('plan'), async (req, res) => {
 
 // Socket.IO pour la messagerie en temps réel
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-  
-  socket.on('join-room', (room) => {
-    socket.join(room);
-    console.log(`User ${socket.id} joined room ${room}`);
-  });
+  const userKey = socket.data.userKey;
+  // Each user joins their own room so direct messages can be delivered
+  socket.join(userKey);
   
   socket.on('send-message', async (data) => {
-    const { room, message, senderType, senderId } = data;
-    
-    // Sauvegarder le message en base
+    const { to, content } = data || {};
+    if (!to || !content) return;
     try {
+      // sender derived from socket auth
+      const [senderType, senderId] = userKey.split('_');
+      const [recipientType, recipientId] = String(to).split('_');
       const { rows } = await pool.query(
-        'INSERT INTO notification_reply (notification_id, sender_type, sender_employee_id, sender_admin_id, body) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-        [room, senderType, senderType === 'employee' ? senderId : null, senderType === 'admin' ? senderId : null, message]
+        `INSERT INTO message (sender_type, sender_id, recipient_type, recipient_id, content)
+         VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+        [senderType === 'admin' ? 'admin' : 'employee', senderId, recipientType === 'admin' ? 'admin' : 'employee', recipientId, content]
       );
-      
-      // Diffuser le message à tous les utilisateurs de la room
-      io.to(room).emit('new-message', {
-        id: rows[0].id,
-        body: message,
-        sender_type: senderType,
-        created_at: rows[0].created_at
-      });
-    } catch (error) {
-      console.error('Error saving message:', error);
+      // Emit to recipient room and echo back to sender room
+      io.to(to).emit('new-message', rows[0]);
+      io.to(userKey).emit('new-message', rows[0]);
+    } catch (e) {
+      console.error('socket send-message error', e);
       socket.emit('error', { message: 'Failed to send message' });
     }
-  });
-  
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
   });
 });
 
