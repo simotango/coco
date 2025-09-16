@@ -22,6 +22,13 @@
       .badge { display:inline-block; padding:4px 8px; border-radius:9999px; font-size:12px; font-weight:600; }
       .badge.encours { background:#fff7e6; color:#b26a00; border:1px solid #ffe0a3; }
       .badge.livré { background:#e7f7ef; color:#0b7a42; border:1px solid #bde8cf; }
+      .btn-group { display: flex; gap: 4px; }
+      .btn-small { padding: 4px 8px; font-size: 12px; border-radius: 6px; border: 1px solid #ddd; cursor: pointer; }
+      .btn-edit { background: #e3f2fd; color: #1976d2; }
+      .btn-delete { background: #ffebee; color: #d32f2f; }
+      .btn-generate { background: #e8f5e8; color: #2e7d32; }
+      .btn-upload { background: #fff3e0; color: #f57c00; }
+      .btn-small:hover { opacity: 0.8; }
     </style>
   </head>
   <body>
@@ -71,7 +78,13 @@
             <td>${d.plan_jpg ? `<a href="/uploads/${d.plan_jpg}" target="_blank">voir</a>` : ''}</td>
             <td>${d.pdf_path ? `<a href="${d.pdf_path}" target="_blank">Devis PDF</a>` : ''}</td>
             <td>${d.pdf_signe_path ? `<a href="${d.pdf_signe_path}" target="_blank">PDF signé</a>` : ''}</td>
-            <td><button data-id="${d.iddemande}" class="gen">Générer PDF</button></td>
+            <td>
+              <div class="btn-group">
+                <button class="btn-small btn-generate gen" data-id="${d.iddemande}">Générer</button>
+                ${d.pdf_path ? `<button class="btn-small btn-delete delete-pdf" data-id="${d.iddemande}">Supprimer PDF</button>` : ''}
+                <button class="btn-small btn-edit edit-demande" data-id="${d.iddemande}" data-nom="${d.nom}" data-prenom="${d.prenom}" data-telephone="${d.telephone || ''}" data-type="${d.type_projet}" data-prix="${d.prix}">Modifier</button>
+              </div>
+            </td>
           `;
           tbody.appendChild(tr);
         });
@@ -80,6 +93,52 @@
             const id = e.target.getAttribute('data-id');
             const r = await fetch(`/api/demandes/${id}/pdf`, { method: 'POST' });
             if (r.ok) loadDemandes();
+          });
+        });
+        
+        // Gestionnaires pour les nouveaux boutons
+        tbody.querySelectorAll('button.delete-pdf').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const id = e.target.getAttribute('data-id');
+            if (confirm('Êtes-vous sûr de vouloir supprimer ce PDF ?')) {
+              const r = await fetch(`/api/demandes/${id}/delete-pdf`, { 
+                method: 'DELETE', 
+                headers: { Authorization: 'Bearer ' + token } 
+              });
+              if (r.ok) loadDemandes();
+            }
+          });
+        });
+        
+        tbody.querySelectorAll('button.edit-demande').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const id = e.target.getAttribute('data-id');
+            const nom = e.target.getAttribute('data-nom');
+            const prenom = e.target.getAttribute('data-prenom');
+            const telephone = e.target.getAttribute('data-telephone');
+            const type = e.target.getAttribute('data-type');
+            const prix = e.target.getAttribute('data-prix');
+            
+            const newNom = prompt('Nom:', nom);
+            const newPrenom = prompt('Prénom:', prenom);
+            const newTelephone = prompt('Téléphone:', telephone);
+            const newType = prompt('Type de projet:', type);
+            const newPrix = prompt('Prix:', prix);
+            
+            if (newNom && newPrenom && newType && newPrix) {
+              const r = await fetch(`/api/demandes/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                body: JSON.stringify({
+                  nom: newNom,
+                  prenom: newPrenom,
+                  telephone: newTelephone,
+                  type_projet: newType,
+                  prix: parseFloat(newPrix)
+                })
+              });
+              if (r.ok) loadDemandes();
+            }
           });
         });
       }

@@ -9,6 +9,8 @@ import pg from 'pg';
 import fs from 'fs';
 import PDFDocument from 'pdfkit';
 import multer from 'multer';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 
 const { Pool } = pg;
 
@@ -16,6 +18,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
 app.use(cors());
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
@@ -211,6 +221,29 @@ app.get('/api/employees', requireAuth, async (req, res) => {
   res.json(rows);
 });
 
+// Modifier un employé
+app.put('/api/employees/:id', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { nom, prenom, secteur, email } = req.body;
+  if (!nom || !prenom || !secteur) return res.status(400).json({ error: 'nom, prenom, secteur required' });
+  if (!['finance', 'chantier', 'production'].includes(secteur)) return res.status(400).json({ error: 'invalid secteur' });
+  
+  const { rows } = await pool.query(
+    'UPDATE employee SET nom = $1, prenom = $2, secteur = $3, email = $4 WHERE id = $5 RETURNING *',
+    [nom, prenom, secteur, email || null, id]
+  );
+  if (rows.length === 0) return res.status(404).json({ error: 'Employee not found' });
+  res.json(rows[0]);
+});
+
+// Supprimer un employé
+app.delete('/api/employees/:id', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { rows } = await pool.query('DELETE FROM employee WHERE id = $1 RETURNING *', [id]);
+  if (rows.length === 0) return res.status(404).json({ error: 'Employee not found' });
+  res.json({ message: 'Employee deleted' });
+});
+
 // Employee login
 app.post('/api/employee/login', async (req, res) => {
   const { email, password } = req.body;
@@ -313,6 +346,17 @@ app.post('/api/admin/notify', requireAuth, async (req, res) => {
     await pool.query('INSERT INTO notification (employee_id, title, body_html, created_by_admin) VALUES ($1,$2,$3,$4)', [e.id, title, body_html, req.user.adminId]);
   }
   res.json({ ok: true, count: emps.length });
+});
+
+// Marquer une notification comme lue (admin)
+app.post('/api/admin/notifications/:id/read', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { rows } = await pool.query(
+    'UPDATE notification SET read_at = NOW() WHERE id = $1 RETURNING *',
+    [id]
+  );
+  if (rows.length === 0) return res.status(404).json({ error: 'Notification not found' });
+  res.json(rows[0]);
 });
 
 // Demande endpoints
@@ -644,6 +688,65 @@ app.post('/api/demandes/:id/upload-pdf', requireEmployeeAuth, async (req, res) =
   await pool.query('UPDATE demande SET pdf_signe_path = $1, statut = $2 WHERE iddemande = $3', [`/pdfsigne/${path.basename(pdfPath)}`, 'livré', id]);
   res.json({ pdf_signe: `/pdfsigne/${path.basename(pdfPath)}`, statut: 'livré' });
 });
+
+// Modifier une demande (admin)
+app.put('/api/admin/demandes/:id', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { nom, prenom, telephone, type_projet, prix } = req.body;
+  if (!nom || !prenom || !type_projet || !prix) return res.status(400).json({ error: 'nom, prenom, type_projet, prix required' });
+  
+  const { rows } = await pool.query(
+    'UPDATE demande SET nom = $1, prenom = $2, telephone = $3, type_projet = $4, prix = $5 WHERE iddemande = $6 RETURNING *',
+    [nom, prenom, telephone || null, type_projet, parseFloat(prix), id]
+  );
+  if (rows.length === 0) return res.status(404).json({ error: 'Demande not found' });
+  res.json(rows[0]);
+});
+
+// Modifier une demande (employé)
+app.put('/api/demandes/:id', requireEmployeeAuth, async (req, res) => {
+  const { id } = req.params;
+  const { nom, prenom, telephone, type_projet, prix } = req.body;
+  if (!nom || !prenom || !type_projet || !prix) return res.status(400).json({ error: 'nom, prenom, type_projet, prix required' });
+  
+  const { rows } = await pool.query(
+    'UPDATE demande SET nom = $1, prenom = $2, telephone = $3, type_projet = $4, prix = $5 WHERE iddemande = $6 RETURNING *',
+    [nom, prenom, telephone || null, type_projet, parseFloat(prix), id]
+  );
+  if (rows.length === 0) return res.status(404).json({ error: 'Demande not found' });
+  res.json(rows[0]);
+});
+
+// Supprimer un PDF (admin)
+app.delete('/api/admin/demandes/:id/delete-pdf', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { rows } = await pool.query('SELECT pdf_path FROM demande WHERE iddemande = $1', [id]);
+  if (rows.length === 0) return res.status(404).json({ error: 'Demande not found' });
+  
+  const demande = rows[0];
+  if (demande.pdf_path) {
+    const pdfPath = path.join(__dirname, demande.pdf_path);
+    try { fs.unlinkSync(pdfPath); } catch {}
+    await pool.query('UPDATE demande SET pdf_path = NULL WHERE iddemande = $1', [id]);
+  }
+  res.json({ message: 'PDF deleted' });
+});
+
+// Supprimer un PDF (employé)
+app.delete('/api/demandes/:id/delete-pdf', requireEmployeeAuth, async (req, res) => {
+  const { id } = req.params;
+  const { rows } = await pool.query('SELECT pdf_path FROM demande WHERE iddemande = $1', [id]);
+  if (rows.length === 0) return res.status(404).json({ error: 'Demande not found' });
+  
+  const demande = rows[0];
+  if (demande.pdf_path) {
+    const pdfPath = path.join(__dirname, demande.pdf_path);
+    try { fs.unlinkSync(pdfPath); } catch {}
+    await pool.query('UPDATE demande SET pdf_path = NULL WHERE iddemande = $1', [id]);
+  }
+  res.json({ message: 'PDF deleted' });
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(uploadsDir));
 app.use('/pdfs', express.static(pdfsDir));
@@ -957,10 +1060,47 @@ app.post('/api/plan/upload', upload.single('plan'), async (req, res) => {
   }
 });
 
+// Socket.IO pour la messagerie en temps réel
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+  
+  socket.on('join-room', (room) => {
+    socket.join(room);
+    console.log(`User ${socket.id} joined room ${room}`);
+  });
+  
+  socket.on('send-message', async (data) => {
+    const { room, message, senderType, senderId } = data;
+    
+    // Sauvegarder le message en base
+    try {
+      const { rows } = await pool.query(
+        'INSERT INTO notification_reply (notification_id, sender_type, sender_employee_id, sender_admin_id, body) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [room, senderType, senderType === 'employee' ? senderId : null, senderType === 'admin' ? senderId : null, message]
+      );
+      
+      // Diffuser le message à tous les utilisateurs de la room
+      io.to(room).emit('new-message', {
+        id: rows[0].id,
+        body: message,
+        sender_type: senderType,
+        created_at: rows[0].created_at
+      });
+    } catch (error) {
+      console.error('Error saving message:', error);
+      socket.emit('error', { message: 'Failed to send message' });
+    }
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
 const port = process.env.PORT || 8080;
 runMigrationsAndSeed()
   .then(() => {
-    app.listen(port, '0.0.0.0', () => console.log(`Server listening on port ${port}`));
+    server.listen(port, '0.0.0.0', () => console.log(`Server listening on port ${port}`));
   })
   .catch((err) => {
     console.error('Failed to init db', err);

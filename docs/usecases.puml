@@ -1,0 +1,57 @@
+@startuml
+title Système de gestion (Employés / Admin / PDFs / Messagerie)
+
+skinparam usecase {
+  BackgroundColor #EEF6FF
+  BorderColor #4F81BD
+}
+skinparam packageStyle rect
+
+actor "Employé" as Employee
+actor "Administrateur" as Admin
+actor "Service d'authentification" as Auth
+actor "Stockage PDF" as PdfStore
+actor "Base de données" as DB
+actor "Service Messagerie" as Msg
+
+rectangle "Application Web" as App {
+  usecase "S'authentifier" as UC_Login
+  usecase "Gérer son profil" as UC_Profile
+  usecase "Soumettre une demande" as UC_RequestCreate
+  usecase "Consulter ses demandes" as UC_RequestList
+  usecase "Téléverser un plan / PDF" as UC_Upload
+  usecase "Signer un PDF" as UC_Sign
+  usecase "Messagerie interne" as UC_Chat
+
+  usecase "Gérer les employés" as UC_AdminUsers
+  usecase "Valider/Refuser demandes" as UC_Approve
+  usecase "Générer rapports" as UC_Reports
+}
+
+Employee --> UC_Login
+Employee --> UC_Profile
+Employee --> UC_RequestCreate
+Employee --> UC_RequestList
+Employee --> UC_Upload
+Employee --> UC_Sign
+Employee --> UC_Chat
+
+Admin --> UC_Login
+Admin --> UC_AdminUsers
+Admin --> UC_Approve
+Admin --> UC_Reports
+Admin --> UC_Chat
+
+UC_Login --> Auth : vérification\nidentité
+UC_Profile --> DB
+UC_RequestCreate --> DB
+UC_RequestList --> DB
+UC_Upload --> PdfStore
+UC_Sign --> PdfStore
+UC_Reports --> DB
+UC_Chat --> Msg
+
+UC_RequestCreate .> UC_Upload : <<include>>\n(justificatifs)
+UC_Approve .> UC_Reports : <<extend>>\n(suivi)
+
+@enduml

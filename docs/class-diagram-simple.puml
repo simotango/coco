@@ -1,0 +1,79 @@
+@startuml
+title Diagramme de Classes - Entités Principales
+
+skinparam class {
+  BackgroundColor #F0F8FF
+  BorderColor #4682B4
+}
+
+class Admin {
+  - id: UUID
+  - nom: String
+  - prenom: String
+  - email: String
+  - mdp_hash: String
+  - created_at: Timestamp
+}
+
+class Employee {
+  - id: Integer
+  - nom: String
+  - prenom: String
+  - secteur: String
+  - email: String
+  - mdp_hash: String
+  - adminref: UUID
+  - created_at: Timestamp
+}
+
+class Demande {
+  - iddemande: UUID
+  - nom: String
+  - prenom: String
+  - telephone: String
+  - type_projet: String
+  - plan_jpg: String
+  - prix: Decimal
+  - statut: String
+  - pdf_path: String
+  - pdf_signe_path: String
+  - created_at: Timestamp
+}
+
+class MatierePremiere {
+  - id: UUID
+  - type_matiere: String
+  - date_entree: Date
+  - qte: Decimal
+  - created_at: Timestamp
+}
+
+class Notification {
+  - id: UUID
+  - employee_id: Integer
+  - title: String
+  - body_html: String
+  - created_at: Timestamp
+  - read_at: Timestamp
+  - taken_at: Timestamp
+  - created_by_admin: UUID
+}
+
+class NotificationReply {
+  - id: UUID
+  - notification_id: UUID
+  - sender_type: String
+  - sender_employee_id: Integer
+  - sender_admin_id: UUID
+  - body: String
+  - created_at: Timestamp
+}
+
+' Relations
+Admin ||--o{ Employee : "gère"
+Employee ||--o{ Demande : "crée"
+Admin ||--o{ Notification : "crée"
+Employee ||--o{ Notification : "reçoit"
+Notification ||--o{ NotificationReply : "contient"
+
+@enduml

@@ -29,6 +29,13 @@
       .badge.encours { background:#fff7e6; color:#b26a00; border:1px solid #ffe0a3; }
       .badge.livré { background:#e7f7ef; color:#0b7a42; border:1px solid #bde8cf; }
       .hidden { display:none; }
+      .btn-group { display: flex; gap: 4px; }
+      .btn-small { padding: 4px 8px; font-size: 12px; border-radius: 6px; border: 1px solid #ddd; cursor: pointer; }
+      .btn-edit { background: #e3f2fd; color: #1976d2; }
+      .btn-delete { background: #ffebee; color: #d32f2f; }
+      .btn-generate { background: #e8f5e8; color: #2e7d32; }
+      .btn-upload { background: #fff3e0; color: #f57c00; }
+      .btn-small:hover { opacity: 0.8; }
     </style>
   </head>
   <body>
@@ -42,6 +49,7 @@
         <button class="tab" data-target="section-demandes">Demandes</button>
         <button class="tab" data-target="section-assistant">Assistant</button>
         <a href="/admin-messenger.html" class="tab" style="background:#e8f5e8;color:#2e7d32;text-decoration:none;">💬 Messagerie</a>
+        <a href="/notifications.html" class="tab" style="background:#fff3e0;color:#f57c00;text-decoration:none;">🔔 Notifications</a>
         <button id="logout" class="tab" style="background:#ffecec;color:#b00020;">Déconnexion</button>
       </nav>
     </header>
@@ -74,7 +82,7 @@
         <h3>Employés</h3>
         <table>
           <thead>
-            <tr><th>ID</th><th>Nom</th><th>Prénom</th><th>Secteur</th><th>AdminRef</th></tr>
+            <tr><th>ID</th><th>Nom</th><th>Prénom</th><th>Secteur</th><th>Email</th><th>AdminRef</th><th>Actions</th></tr>
           </thead>
           <tbody id="employees"></tbody>
         </table>
@@ -168,7 +176,12 @@
         tbody.innerHTML = '';
         list.forEach(emp => {
           const tr = document.createElement('tr');
-          tr.innerHTML = `<td>${emp.id}</td><td>${emp.nom}</td><td>${emp.prenom}</td><td>${emp.secteur}</td><td>${emp.adminref || ''}</td>`;
+          tr.innerHTML = `<td>${emp.id}</td><td>${emp.nom}</td><td>${emp.prenom}</td><td>${emp.secteur}</td><td>${emp.email || ''}</td><td>${emp.adminref || ''}</td><td>
+            <div class="btn-group">
+              <button class="btn-small btn-edit edit-employee" data-id="${emp.id}" data-nom="${emp.nom}" data-prenom="${emp.prenom}" data-email="${emp.email || ''}" data-secteur="${emp.secteur}">Modifier</button>
+              <button class="btn-small btn-delete delete-employee" data-id="${emp.id}">Supprimer</button>
+            </div>
+          </td>`;
           tbody.appendChild(tr);
         });
       }
@@ -214,7 +227,11 @@
             <td>${d.pdf_path ? `<a href="${d.pdf_path}" target="_blank" download>Télécharger devis</a>` : ''}</td>
             <td>${d.pdf_signe_path ? `<a href="${d.pdf_signe_path}" target="_blank" download>PDF signé</a>` : `<button class="up" data-id="${d.iddemande}">Uploader PDF signé</button>`}</td>
             <td>
-              <button class="gen" data-id="${d.iddemande}">Générer PDF</button>
+              <div class="btn-group">
+                <button class="btn-small btn-generate gen" data-id="${d.iddemande}">Générer</button>
+                ${d.pdf_path ? `<button class="btn-small btn-delete delete-pdf" data-id="${d.iddemande}">Supprimer PDF</button>` : ''}
+                <button class="btn-small btn-edit edit-demande" data-id="${d.iddemande}" data-nom="${d.nom}" data-prenom="${d.prenom}" data-telephone="${d.telephone || ''}" data-type="${d.type_projet}" data-prix="${d.prix}">Modifier</button>
+              </div>
             </td>
           `;
           tbody.appendChild(tr);
@@ -455,6 +472,88 @@
         const resJson = await r.json();
         adminPush('assistant', `Notification envoyée automatiquement au secteur ${secteur} (${resJson.count} destinataires).`);
       }
+
+      // Gestionnaires pour les nouveaux boutons
+      document.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('delete-pdf')) {
+          const id = e.target.getAttribute('data-id');
+          if (confirm('Êtes-vous sûr de vouloir supprimer ce PDF ?')) {
+            const r = await fetch(`/api/admin/demandes/${id}/delete-pdf`, { 
+              method: 'DELETE', 
+              headers: { Authorization: 'Bearer ' + token } 
+            });
+            if (r.ok) loadDemandes();
+          }
+        }
+        
+        if (e.target.classList.contains('edit-demande')) {
+          const id = e.target.getAttribute('data-id');
+          const nom = e.target.getAttribute('data-nom');
+          const prenom = e.target.getAttribute('data-prenom');
+          const telephone = e.target.getAttribute('data-telephone');
+          const type = e.target.getAttribute('data-type');
+          const prix = e.target.getAttribute('data-prix');
+          
+          const newNom = prompt('Nom:', nom);
+          const newPrenom = prompt('Prénom:', prenom);
+          const newTelephone = prompt('Téléphone:', telephone);
+          const newType = prompt('Type de projet:', type);
+          const newPrix = prompt('Prix:', prix);
+          
+          if (newNom && newPrenom && newType && newPrix) {
+            const r = await fetch(`/api/admin/demandes/${id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+              body: JSON.stringify({
+                nom: newNom,
+                prenom: newPrenom,
+                telephone: newTelephone,
+                type_projet: newType,
+                prix: parseFloat(newPrix)
+              })
+            });
+            if (r.ok) loadDemandes();
+          }
+        }
+        
+        if (e.target.classList.contains('edit-employee')) {
+          const id = e.target.getAttribute('data-id');
+          const nom = e.target.getAttribute('data-nom');
+          const prenom = e.target.getAttribute('data-prenom');
+          const email = e.target.getAttribute('data-email');
+          const secteur = e.target.getAttribute('data-secteur');
+          
+          const newNom = prompt('Nom:', nom);
+          const newPrenom = prompt('Prénom:', prenom);
+          const newEmail = prompt('Email:', email);
+          const newSecteur = prompt('Secteur (finance/chantier/production):', secteur);
+          
+          if (newNom && newPrenom && newSecteur) {
+            const r = await fetch(`/api/employees/${id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+              body: JSON.stringify({
+                nom: newNom,
+                prenom: newPrenom,
+                email: newEmail || null,
+                secteur: newSecteur
+              })
+            });
+            if (r.ok) refreshEmployees();
+          }
+        }
+        
+        if (e.target.classList.contains('delete-employee')) {
+          const id = e.target.getAttribute('data-id');
+          if (confirm('Êtes-vous sûr de vouloir supprimer cet employé ?')) {
+            const r = await fetch(`/api/employees/${id}`, { 
+              method: 'DELETE', 
+              headers: { Authorization: 'Bearer ' + token } 
+            });
+            if (r.ok) refreshEmployees();
+          }
+        }
+      });
     </script>
     <!-- Système de Guide Interactif -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>

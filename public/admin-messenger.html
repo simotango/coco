@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Messagerie Admin - Zalagh Plancher</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
         :root {
             --brand: #1976d2;
@@ -517,7 +518,30 @@
             await loadCurrentUser();
             await loadContacts();
             setupEventListeners();
+            setupSocketIO();
             updateUI();
+        }
+        
+        // Setup Socket.IO
+        function setupSocketIO() {
+            const socket = io();
+            
+            socket.on('connect', () => {
+                console.log('Connected to server');
+            });
+            
+            socket.on('new-message', (data) => {
+                if (currentContact && data.notification_id === currentContact.id) {
+                    // Add message to current conversation
+                    if (!messages[currentContact.id]) messages[currentContact.id] = [];
+                    messages[currentContact.id].push(data);
+                    renderMessages(currentContact.id);
+                }
+            });
+            
+            socket.on('error', (error) => {
+                console.error('Socket error:', error);
+            });
         }
         
         // Load current user
@@ -706,26 +730,26 @@
             if (!content || !currentContact) return;
             
             try {
-                const res = await fetch('/api/admin/messages', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + localStorage.getItem('token')
-                    },
-                    body: JSON.stringify({
-                        recipient_id: currentContact.id,
-                        content: content
-                    })
+                // Use Socket.IO for real-time messaging
+                const socket = io();
+                socket.emit('send-message', {
+                    room: currentContact.id,
+                    message: content,
+                    senderType: 'admin',
+                    senderId: currentUser.id
                 });
                 
-                if (res.ok) {
-                    const newMessage = await res.json();
-                    if (!messages[currentContact.id]) messages[currentContact.id] = [];
-                    messages[currentContact.id].push(newMessage);
-                    
-                    input.value = '';
-                    renderMessages(currentContact.id);
-                }
+                // Add message to local state immediately
+                if (!messages[currentContact.id]) messages[currentContact.id] = [];
+                messages[currentContact.id].push({
+                    content: content,
+                    sender_type: 'admin',
+                    sender_id: currentUser.id,
+                    created_at: new Date().toISOString()
+                });
+                
+                input.value = '';
+                renderMessages(currentContact.id);
             } catch (error) {
                 console.error('Error sending message:', error);
             }

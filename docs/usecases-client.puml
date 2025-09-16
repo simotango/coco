@@ -1,0 +1,56 @@
+@startuml
+title Cas d'utilisation - Client (Employé)
+
+skinparam usecase {
+  BackgroundColor #E8F5E8
+  BorderColor #2E7D32
+}
+skinparam actorStyle awesome
+
+actor "Employé" as Employee
+actor "Système" as System
+
+rectangle "Interface Client" as Client {
+  usecase "Se connecter" as UC_Login
+  usecase "Gérer son profil" as UC_Profile
+  usecase "Créer une demande" as UC_CreateRequest
+  usecase "Consulter ses demandes" as UC_ViewRequests
+  usecase "Téléverser un fichier PDF" as UC_UploadPDF
+  usecase "Téléverser une image" as UC_UploadImage
+  usecase "Signer un document" as UC_SignDocument
+  usecase "Envoyer un message" as UC_SendMessage
+  usecase "Consulter les messages" as UC_ViewMessages
+  usecase "Se déconnecter" as UC_Logout
+}
+
+' Relations principales
+Employee --> UC_Login
+Employee --> UC_Profile
+Employee --> UC_CreateRequest
+Employee --> UC_ViewRequests
+Employee --> UC_UploadPDF
+Employee --> UC_UploadImage
+Employee --> UC_SignDocument
+Employee --> UC_SendMessage
+Employee --> UC_ViewMessages
+Employee --> UC_Logout
+
+' Dépendances système
+UC_Login --> System : vérification\nidentité
+UC_Profile --> System : sauvegarde\ndonnées
+UC_CreateRequest --> System : enregistrement\ndemande
+UC_ViewRequests --> System : récupération\ndonnées
+UC_UploadPDF --> System : stockage\nfichier
+UC_UploadImage --> System : stockage\nfichier
+UC_SignDocument --> System : traitement\nsignature
+UC_SendMessage --> System : envoi\nmessage
+UC_ViewMessages --> System : récupération\nmessages
+
+' Relations d'inclusion
+UC_CreateRequest .> UC_UploadPDF : <<include>>\n(justificatifs)
+UC_CreateRequest .> UC_UploadImage : <<include>>\n(plans)
+
+' Relations d'extension
+UC_ViewRequests .> UC_SignDocument : <<extend>>\n(si signature requise)
+
+@enduml
